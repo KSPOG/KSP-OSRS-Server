@@ -115,7 +115,7 @@ public final class PlayerBankStore {
     }
     private void audit(String action,String user,int slot,Item before,Item after) throws IOException {
         String event="{\"time\":\""+Instant.now()+"\",\"action\":\""+action+"\",\"player\":\""+user+
-            "\",\"slot\":"+slot+",\"before\":"+itemJson(before)+",\"after\":"+itemJson(after)+"}\\n";
+            "\",\"slot\":"+slot+",\"before\":"+itemJson(before)+",\"after\":"+itemJson(after)+"}\n";
         Files.writeString(audit,event,StandardOpenOption.CREATE,StandardOpenOption.APPEND);
     }
     private static String itemJson(Item i) {

@@ -23,3 +23,7 @@ Each running world owns an isolated nominal 600 ms tick counter, exposed as `tic
 ## RuneLite world discovery
 
 Public loopback endpoint `GET /client/worlds.js` returns a RuneLite-style `WorldResult` object containing only started/listening worlds. P2P worlds include the `MEMBERS` type; F2P worlds have no membership flag. This does **not** make the in-game world switcher or OSRS login protocol work yet.
+
+## Admin bank records
+
+Open `http://localhost:8087/admin/bank` with the same administrator token. Create a local player record, set/delete bank slots, and inspect saved values. Changes persist to `data/players/*.properties` and append audit events to `data/bank-audit.jsonl`. Each bank mutation requires the previous revision; stale writes return HTTP 409. The player records are **administrative test data only**, not live OSRS accounts or session bank contents. Existing player records are not synchronized to Microbot.
