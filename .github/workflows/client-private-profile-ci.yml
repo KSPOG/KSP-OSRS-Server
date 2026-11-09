@@ -25,3 +25,5 @@ jobs:
             src/test/java/net/runelite/client/plugins/microbot/KspServerDiscoverySmokeTest.java
           java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspPrivateServerConfigSmokeTest
           java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspServerDiscoverySmokeTest
+          grep -q 'KSP_OSRS_REVISION' src/main/java/net/runelite/client/rs/ClientLoader.java
+          grep -q 'KspServerDiscovery.verifyReady()' src/main/java/net/runelite/client/rs/ClientLoader.java

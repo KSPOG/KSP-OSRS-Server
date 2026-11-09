@@ -35,6 +35,8 @@ import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.RuneLiteProperties;
+import net.runelite.client.plugins.microbot.KspPrivateServerConfig;
+import net.runelite.client.plugins.microbot.KspServerDiscovery;
 import net.runelite.client.RuntimeConfig;
 import net.runelite.client.RuntimeConfigLoader;
 import net.runelite.client.ui.FatalErrorDialog;
@@ -61,7 +63,7 @@ public class ClientLoader implements Supplier<Client>
 		this.clientConfigLoader = new ClientConfigLoader(okHttpClient);
 		this.worldSupplier = new WorldSupplier(okHttpClient);
 		this.runtimeConfigLoader = runtimeConfigLoader;
-		this.javConfigUrl = javConfigUrl;
+		this.javConfigUrl = KspPrivateServerConfig.resolveJavConfigUrl(javConfigUrl);
 	}
 
 	@Override
@@ -113,7 +115,21 @@ public class ClientLoader implements Supplier<Client>
 	private RSConfig downloadConfig() throws IOException
 	{
 		HttpUrl url = HttpUrl.get(javConfigUrl);
-		IOException err = null;
+        if (KspPrivateServerConfig.enabled())
+        {
+            // Fail closed: an unfinished local game service must never silently
+            // route the ordinary client into Jagex's production servers.
+            KspServerDiscovery.verifyReady();
+            RSConfig privateConfig = clientConfigLoader.fetch(url);
+            if (Strings.isNullOrEmpty(privateConfig.getCodeBase())
+                || Strings.isNullOrEmpty(privateConfig.getInitialJar())
+                || Strings.isNullOrEmpty(privateConfig.getInitialClass()))
+            {
+                throw new IOException("Invalid private jav_config");
+            }
+            return privateConfig;
+        }
+        IOException err = null;
 		for (int attempt = 0; attempt < NUM_ATTEMPTS; attempt++)
 		{
 			try
@@ -195,6 +211,11 @@ public class ClientLoader implements Supplier<Client>
 		rs.setConfiguration(new RSAppletStub(config, runtimeConfigLoader));
 
 		log.info("injected-client {}", rs.getBuildID());
+        if ("true".equalsIgnoreCase(System.getenv("KSP_OSRS_LOG_REVISION")))
+        {
+            log.info("KSP_OSRS_REVISION | revision={} buildId={} privateProfile={}",
+                rs.getRevision(), rs.getBuildID(), KspPrivateServerConfig.enabled());
+        }
 
 		return rs;
 	}

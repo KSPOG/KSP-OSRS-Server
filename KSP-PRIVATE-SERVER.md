@@ -35,3 +35,7 @@ Remove-Item Env:KSP_OSRS_PRIVATE_SERVER -ErrorAction SilentlyContinue
 Look for `KSP_OSRS_REVISION | revision=<number> buildId=<id> privateProfile=false` in Microbot's log. Use a build from the **client branch** with the diagnostic commit, not an older released Microbot JAR. Share only the revision/build ID line; redact usernames, authentication details and session tokens. A verified matching gamepack and cache are still required for actual integration tests.
 
 RSProt revision 242 is available under MIT, but must **not** be activated unless the OSRS client revision and cache are known to match. The server's protocol laboratory is deliberately isolated from live listeners.
+
+## Standard client bootstrap now instrumented
+
+The normal `:client:run` entry point uses `net.runelite.client.rs.ClientLoader`, **not** `MicrobotClientLoader`. Both loaders now implement the opt-in private profile, check readiness, and can log `KSP_OSRS_REVISION` with `KSP_OSRS_LOG_REVISION=true`. No official-client fallback occurs in private mode. This fixes the previously missing revision log for the standard launcher. Private gameplay remains blocked while the server advertises `gameProtocolReady=false`.
