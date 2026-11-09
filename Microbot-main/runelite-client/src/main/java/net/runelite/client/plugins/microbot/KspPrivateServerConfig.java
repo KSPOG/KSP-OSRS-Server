@@ -30,6 +30,17 @@ public final class KspPrivateServerConfig
             ? "http://127.0.0.1:8087/client/manifest" : configured);
     }
 
+    /**
+     * WorldService's private directory endpoint, strictly loopback-only.
+     * Discovery is independent of the unavailable game/JS5 protocol.
+     */
+    public static String worldDirectoryUrl()
+    {
+        String configured = System.getenv("KSP_OSRS_WORLDS_URL");
+        return resolve("", "true", configured == null || configured.isBlank()
+            ? "http://127.0.0.1:8087/client/worlds.js" : configured);
+    }
+
     /** Pure helper for deterministic testing. */
     public static String resolve(String official, String enabled, String privateUrl)
     {

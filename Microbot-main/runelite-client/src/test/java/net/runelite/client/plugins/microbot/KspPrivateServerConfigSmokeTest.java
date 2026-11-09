@@ -8,6 +8,8 @@ public final class KspPrivateServerConfigSmokeTest {
         reject(official,"true","https://localhost:8090/jav_config.ws");
         reject(official,"true","http://example.com:8090/jav_config.ws");
         reject(official,"true","http://user:pass@localhost:8090/jav_config.ws");
+        require("http://127.0.0.1:8087/client/worlds.js".equals(
+            KspPrivateServerConfig.resolve(official,"true","http://127.0.0.1:8087/client/worlds.js")), "world directory URL");
         System.out.println("Private config smoke tests passed");
     }
     private static void require(boolean ok,String reason) { if(!ok)throw new AssertionError(reason); }

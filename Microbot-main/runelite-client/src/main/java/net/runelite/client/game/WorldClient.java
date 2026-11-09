@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.http.api.RuneLiteAPI;
+import net.runelite.client.plugins.microbot.KspPrivateServerConfig;
 import net.runelite.http.api.worlds.WorldResult;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -48,9 +49,17 @@ public class WorldClient
 
 	public WorldResult lookupWorlds() throws IOException
 	{
-		HttpUrl url = apiBase.newBuilder()
-			.addPathSegment("worlds.js")
-			.build();
+		HttpUrl url;
+        if (KspPrivateServerConfig.enabled())
+        {
+            url = HttpUrl.get(KspPrivateServerConfig.worldDirectoryUrl());
+        }
+        else
+        {
+            url = apiBase.newBuilder()
+                .addPathSegment("worlds.js")
+                .build();
+        }
 
 		log.debug("Built URI: {}", url);
 
