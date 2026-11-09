@@ -19,3 +19,7 @@ The earlier local bank dashboard prototype has **not** been integrated into this
 ## Tick scaffolding
 
 Each running world owns an isolated nominal 600 ms tick counter, exposed as `ticks` in world discovery. It is a heartbeat only; **no player actions, NPCs, or game simulation are implemented**. Counters reset when stopped.
+
+## RuneLite world discovery
+
+Public loopback endpoint `GET /client/worlds.js` returns a RuneLite-style `WorldResult` object containing only started/listening worlds. P2P worlds include the `MEMBERS` type; F2P worlds have no membership flag. This does **not** make the in-game world switcher or OSRS login protocol work yet.

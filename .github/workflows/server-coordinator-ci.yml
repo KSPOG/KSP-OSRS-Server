@@ -48,8 +48,20 @@ jobs:
           curl --fail --silent -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds | grep -q '"listenerActive":true'
           check_port 43301 open
           check_port 43308 closed
+          python3 - <<'PY'
+          import json, urllib.request
+          worlds=json.load(urllib.request.urlopen("http://localhost:8087/client/worlds.js"))["worlds"]
+          assert {w["id"] for w in worlds} == {301,302}
+          assert next(w for w in worlds if w["id"]==301)["types"] == []
+          assert next(w for w in worlds if w["id"]==302)["types"] == ["MEMBERS"]
+          PY
           curl --fail --silent -X POST -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds/301/stop | grep -q '"running":false'
           check_port 43301 closed
+          python3 - <<'PY'
+          import json,urllib.request
+          worlds=json.load(urllib.request.urlopen("http://localhost:8087/client/worlds.js"))["worlds"]
+          assert all(w["id"]!=301 for w in worlds)
+          PY
           grep -q 'world.301=false' "$KSP_WORLD_STATE_FILE"
           STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8087/admin/api/worlds/301/start)
           test "$STATUS" = "401"

@@ -33,6 +33,18 @@ public final class ServerMain {
         for(World w:worlds.values())result.add("{\"id\":"+w.id()+",\"type\":\""+w.type()+"\",\"capacity\":"+w.capacity()+",\"running\":"+running.contains(w.id())+",\"listenerActive\":"+sockets.listening(w.id())+",\"tcpPort\":"+sockets.port(w.id())+",\"rejectedConnections\":"+sockets.attempts(w.id())+",\"ticks\":"+sockets.ticks(w.id())+",\"population\":0}");
         return result.toString();
     }
+    /** RuneLite world-directory shape. Only online worlds are advertised. */
+    private static synchronized String clientWorldsJson() {
+        StringJoiner result = new StringJoiner(",", "{\"worlds\":[", "]}");
+        for (World w : worlds.values()) {
+            if (!running.contains(w.id()) || !sockets.listening(w.id())) continue;
+            String types = "P2P".equals(w.type()) ? "[\"MEMBERS\"]" : "[]";
+            result.add("{\"id\":" + w.id() + ",\"types\":" + types
+                + ",\"address\":\"127.0.0.1\",\"activity\":\"KSP " + w.type()
+                + "\",\"location\":0,\"players\":0}");
+        }
+        return result.toString();
+    }
     private static synchronized void admin(HttpExchange ex)throws IOException {
         if(!authorized(ex)){send(ex,secret.length<24?503:401,"application/json","{\"error\":\"Admin authorization required\"}");return;}
         String path=ex.getRequestURI().getPath();
@@ -100,6 +112,13 @@ public final class ServerMain {
                 send(ex,405,"application/json","{\"error\":\"Method not allowed\"}");return;
             }
             send(ex,200,"application/json","{\"schemaVersion\":1,\"gameProtocolReady\":false,\"javConfigReady\":false,\"clientRevision\":null,\"worlds\":"+worldsJson()+"}");
+        });
+        http.createContext("/client/worlds.js",ex->{
+            if(!ex.getRequestURI().getPath().equals("/client/worlds.js")
+                || !ex.getRequestMethod().equals("GET")) {
+                send(ex,405,"application/json","{\"error\":\"Method not allowed\"}");return;
+            }
+            send(ex,200,"application/json",clientWorldsJson());
         });
         http.createContext("/admin/api",ServerMain::admin);
         http.createContext("/admin",ex->{
