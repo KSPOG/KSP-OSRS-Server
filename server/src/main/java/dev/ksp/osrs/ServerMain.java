@@ -14,6 +14,7 @@ public final class ServerMain {
     private static final Set<Integer> running=new HashSet<>();
     private static Path worldStatePath;
     private static WorldSocketManager sockets;
+    private static PlayerBankStore bankStore;
     private static final byte[] secret=System.getenv().getOrDefault("KSP_ADMIN_TOKEN","").getBytes(StandardCharsets.UTF_8);
     private static void send(HttpExchange ex,int status,String mime,String value)throws IOException {
         byte[] bytes=value.getBytes(StandardCharsets.UTF_8);
@@ -48,6 +49,10 @@ public final class ServerMain {
     private static synchronized void admin(HttpExchange ex)throws IOException {
         if(!authorized(ex)){send(ex,secret.length<24?503:401,"application/json","{\"error\":\"Admin authorization required\"}");return;}
         String path=ex.getRequestURI().getPath();
+        if(path.startsWith("/admin/api/players")) {
+            BankAdminApi.handle(ex,bankStore);
+            return;
+        }
         if(path.equals("/admin/api/worlds")&&ex.getRequestMethod().equals("GET")){send(ex,200,"application/json",worldsJson());return;}
         if(path.matches("/admin/api/worlds/[0-9]+/(start|stop)")&&ex.getRequestMethod().equals("POST")){
             String[] parts=path.split("/");
@@ -105,6 +110,7 @@ public final class ServerMain {
             sockets.close();
             throw new IOException("Unable to start configured world TCP listeners",bindError);
         }
+        bankStore = new PlayerBankStore(Path.of(System.getenv().getOrDefault("KSP_PLAYER_DATA_DIR","data")));
         HttpServer http=HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(),8087),0);
         http.createContext("/health",ex->send(ex,200,"application/json","{\"status\":\"ok\",\"gameProtocol\":\"NOT_IMPLEMENTED\"}"));
         http.createContext("/client/manifest",ex->{
@@ -121,6 +127,13 @@ public final class ServerMain {
             send(ex,200,"application/json",clientWorldsJson());
         });
         http.createContext("/admin/api",ServerMain::admin);
+        http.createContext("/admin/bank",ex->{
+            if(!ex.getRequestURI().getPath().equals("/admin/bank")||!ex.getRequestMethod().equals("GET")) {
+                send(ex,404,"text/plain","Not found");return;
+            }
+            ex.getResponseHeaders().set("Content-Security-Policy","default-src 'none';script-src 'unsafe-inline';style-src 'unsafe-inline';connect-src 'self';base-uri 'none';frame-ancestors 'none'");
+            send(ex,200,"text/html; charset=utf-8",Files.readString(Path.of("dashboard/bank.html")));
+        });
         http.createContext("/admin",ex->{
             if(!ex.getRequestURI().getPath().equals("/admin")||!ex.getRequestMethod().equals("GET")){send(ex,404,"text/plain","Not found");return;}
             ex.getResponseHeaders().set("Content-Security-Policy","default-src 'none';script-src 'unsafe-inline';style-src 'unsafe-inline';connect-src 'self';base-uri 'none';frame-ancestors 'none'");

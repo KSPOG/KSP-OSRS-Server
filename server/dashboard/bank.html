@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KSP OSRS | Bank administration</title>
+<style>:root{font-family:Segoe UI,Arial,sans-serif;color-scheme:dark;background:#101827;color:#e7ecf8}body{margin:0}header{padding:20px;background:#172339}main{max-width:1000px;margin:30px auto;padding:0 22px}.panel{background:#19263c;border:1px solid #344563;border-radius:12px;padding:22px;margin:18px 0}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}input,select{background:#0e1829;color:white;border:1px solid #455572;border-radius:7px;padding:10px}button{background:#5279ec;color:white;padding:10px 14px;border:0;border-radius:7px;cursor:pointer}button.red{background:#953f52}button:disabled{opacity:.55}p{color:#adbad1}table{border-collapse:collapse;width:100%}td,th{padding:10px;border-bottom:1px solid #344563;text-align:left}</style>
+</head><body><header><strong>KSP OSRS — Bank administration</strong></header>
+<main><a href="/admin">World control</a><h1>Player bank editor</h1>
+<p>Admin-only test records; changes are not synchronized to Microbot or live OSRS characters.</p>
+<section class="panel"><div class="row"><input type="password" id="token" placeholder="Admin token"><button id="connect">Authenticate</button></div><p id="message" role="status"></p></section>
+<section class="panel"><h2>Players</h2><div class="row"><select id="player"><option value="">Select player</option></select><button id="reload">Refresh</button></div>
+<div class="row"><input id="newName" maxlength="12" placeholder="New username"><label><input id="member" type="checkbox"> Members account</label><button id="create">Create player</button></div></section>
+<section class="panel"><h2 id="bankTitle">Bank</h2><p id="revision"></p>
+<div class="row"><input id="slot" type="number" min="0" max="799" placeholder="Slot"><input id="itemId" type="number" min="0" max="65535" placeholder="Item ID"><input id="qty" type="number" min="1" placeholder="Quantity">
+<button id="set">Set slot</button><button class="red" id="delete">Delete slot</button></div>
+<table><thead><tr><th>Slot</th><th>Item ID</th><th>Quantity</th></tr></thead><tbody id="rows"></tbody></table>
+</section></main><script>
+(()=>{'use strict';const $=id=>document.getElementById(id);let token='',current=null;
+const message=t=>$('message').textContent=t;
+async function api(path,values){const init={headers:{Authorization:'Bearer '+token}};
+if(values){init.method='POST';init.headers['Content-Type']='application/x-www-form-urlencoded';init.body=new URLSearchParams(values).toString()}
+const response=await fetch('/admin/api'+path,init),data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data}
+function show(p){current=p;$('bankTitle').textContent=p.username+' bank';$('revision').textContent='Revision '+p.revision+' · '+(p.member?'Members':'Free');
+$('rows').replaceChildren();for(const i of p.bank){const tr=document.createElement('tr');for(const value of [i.slot,i.itemId,i.quantity]){const td=document.createElement('td');td.textContent=value;tr.append(td)}tr.onclick=()=>{$('slot').value=i.slot;$('itemId').value=i.itemId;$('qty').value=i.quantity};$('rows').append(tr)}}
+async function players(){try{const list=await api('/players'),select=$('player'),previous=select.value;select.replaceChildren();const empty=document.createElement('option');empty.value='';empty.textContent='Select player';select.append(empty);for(const p of list){const option=document.createElement('option');option.value=p.username;option.textContent=p.username;select.append(option)}if(list.some(p=>p.username===previous))select.value=previous; if(select.value)show(await api('/players/'+encodeURIComponent(select.value)+'/bank'));message('Loaded '+list.length+' players')}catch(e){message(e.message)}}
+$('connect').onclick=()=>{token=$('token').value;$('token').value='';players()};
+$('reload').onclick=players;$('player').onchange=async()=>{if(!$('player').value){current=null;$('rows').replaceChildren();return}try{show(await api('/players/'+encodeURIComponent($('player').value)+'/bank'))}catch(e){message(e.message)}};
+$('create').onclick=async()=>{try{const p=await api('/players',{username:$('newName').value,member:String($('member').checked)});await players();$('player').value=p.username;show(p);message('Player created')}catch(e){message(e.message)}};
+async function change(action){if(!current){message('Select a player');return}try{const payload={action,revision:current.revision,slot:$('slot').value};if(action==='set'){payload.itemId=$('itemId').value;payload.quantity=$('qty').value}show(await api('/players/'+encodeURIComponent(current.username)+'/bank',payload));message('Bank updated')}catch(e){message(e.message)}}
+$('set').onclick=()=>change('set');$('delete').onclick=()=>change('delete');
+})();
+</script></body></html>
