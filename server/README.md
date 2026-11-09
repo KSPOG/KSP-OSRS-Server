@@ -15,3 +15,7 @@ Requires **JDK 21**. Set a 24+ character `KSP_ADMIN_TOKEN`, and execute `scripts
 **Crucial:** TCP sockets immediately disconnect clients. OSRS login, encryption, packets, movement, cache and game world replication have NOT been implemented. Do not interpret open TCP ports as a playable private server. No RSProx is needed.
 
 The earlier local bank dashboard prototype has **not** been integrated into this GitHub coordinator.
+
+## Tick scaffolding
+
+Each running world owns an isolated nominal 600 ms tick counter, exposed as `ticks` in world discovery. It is a heartbeat only; **no player actions, NPCs, or game simulation are implemented**. Counters reset when stopped.

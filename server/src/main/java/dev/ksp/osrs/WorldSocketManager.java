@@ -60,6 +60,11 @@ public final class WorldSocketManager implements AutoCloseable {
         return listener == null ? 0 : listener.attempts;
     }
 
+    public synchronized long ticks(int worldId) {
+        Listener listener = listeners.get(worldId);
+        return listener == null ? 0 : listener.ticks;
+    }
+
     @Override public synchronized void close() {
         for (Listener listener : listeners.values()) {
             try { listener.server.close(); } catch (IOException ignored) {}
@@ -71,6 +76,8 @@ public final class WorldSocketManager implements AutoCloseable {
         final ServerSocket server;
         final Thread worker;
         volatile long attempts;
+        volatile long ticks;
+        final Thread tickWorker;
         Listener(ServerSocket server, int worldId) {
             this.server = server;
             worker = new Thread(() -> {
@@ -86,6 +93,19 @@ public final class WorldSocketManager implements AutoCloseable {
                 }
             }, "ksp-world-transport-" + worldId);
             worker.setDaemon(true);
+            tickWorker = new Thread(() -> {
+                final long interval = 600_000_000L;
+                long deadline = System.nanoTime();
+                while (!server.isClosed()) {
+                    deadline += interval;
+                    long delay = deadline - System.nanoTime();
+                    if (delay > 0) java.util.concurrent.locks.LockSupport.parkNanos(delay);
+                    else if (delay < -interval) deadline = System.nanoTime();
+                    if (!server.isClosed()) ticks++;
+                }
+            }, "ksp-world-tick-" + worldId);
+            tickWorker.setDaemon(true);
+            tickWorker.start();
         }
     }
 }

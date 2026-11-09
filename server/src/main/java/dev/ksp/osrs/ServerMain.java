@@ -30,7 +30,7 @@ public final class ServerMain {
     }
     private static synchronized String worldsJson(){
         StringJoiner result=new StringJoiner(",","[","]");
-        for(World w:worlds.values())result.add("{\"id\":"+w.id()+",\"type\":\""+w.type()+"\",\"capacity\":"+w.capacity()+",\"running\":"+running.contains(w.id())+",\"listenerActive\":"+sockets.listening(w.id())+",\"tcpPort\":"+sockets.port(w.id())+",\"rejectedConnections\":"+sockets.attempts(w.id())+",\"population\":0}");
+        for(World w:worlds.values())result.add("{\"id\":"+w.id()+",\"type\":\""+w.type()+"\",\"capacity\":"+w.capacity()+",\"running\":"+running.contains(w.id())+",\"listenerActive\":"+sockets.listening(w.id())+",\"tcpPort\":"+sockets.port(w.id())+",\"rejectedConnections\":"+sockets.attempts(w.id())+",\"ticks\":"+sockets.ticks(w.id())+",\"population\":0}");
         return result.toString();
     }
     private static synchronized void admin(HttpExchange ex)throws IOException {
