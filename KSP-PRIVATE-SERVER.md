@@ -1,16 +1,17 @@
-# KSP Private Server — Microbot profile (scaffold)
+# KSP Microbot Private Server Integration
 
-This opt-in profile is integrated into `MicrobotClientLoader`. Existing official Microbot behavior is unchanged by default.
+This is an **opt-in** private profile in `MicrobotClientLoader`, designed to leave the normal RuneLite/Microbot connection untouched.
 
-Windows PowerShell:
+On Windows PowerShell:
 
 ```powershell
 $env:KSP_OSRS_PRIVATE_SERVER = "true"
+$env:KSP_OSRS_DISCOVERY_URL = "http://127.0.0.1:8087/client/manifest"
 $env:KSP_OSRS_PRIVATE_JAV_CONFIG_URL = "http://127.0.0.1:8090/jav_config.ws"
 ```
 
-This requires a **separate compatible private jav_config and game endpoint**, which are **not implemented** in the current server branch. The server admin UI on port 8087 is NOT a jav_config endpoint and cannot accept OSRS game traffic. Do not point this configuration at port 8087.
+The client checks the server's discovery manifest before downloading `jav_config` and refuses to enter an incomplete private mode. Both discovery and configuration addresses are restricted to HTTP loopback for this development phase. The server currently advertises `gameProtocolReady=false` and `javConfigReady=false`, so **private Microbot login is intentionally blocked** with a descriptive error.
 
-The private profile fails closed when its config is unavailable, instead of silently connecting to the official game's configuration. Removing these environment variables restores the default official-client loading path.
+Port 8087 is the local administration/discovery HTTP service, not an OSRS game endpoint. Port 8090 above is reserved for a future configuration service, which is not yet implemented. Do not point clients at 8087 for game networking.
 
-Next tasks: pin actual revision, provide the private jav_config and matching cache/gamepack, implement OSRS login/game protocol, world selection and in-client integration tests. No RSProx dependency.
+Remove the environment variables to use normal Microbot startup. RSProx is not required. Remaining work: pin matching revision, serve a working private `jav_config`, implement OSRS login/game packets and world synchronization, then verify gameplay with Microbot.

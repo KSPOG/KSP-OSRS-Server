@@ -12,7 +12,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Verify configuration routing without external dependencies
+      - name: Verify configuration and discovery guard
         shell: bash
         run: |
           set -euo pipefail
@@ -20,5 +20,8 @@ jobs:
           mkdir -p build/ksp-profile-tests
           javac --release 21 -d build/ksp-profile-tests \
             src/main/java/net/runelite/client/plugins/microbot/KspPrivateServerConfig.java \
-            src/test/java/net/runelite/client/plugins/microbot/KspPrivateServerConfigSmokeTest.java
+            src/main/java/net/runelite/client/plugins/microbot/KspServerDiscovery.java \
+            src/test/java/net/runelite/client/plugins/microbot/KspPrivateServerConfigSmokeTest.java \
+            src/test/java/net/runelite/client/plugins/microbot/KspServerDiscoverySmokeTest.java
           java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspPrivateServerConfigSmokeTest
+          java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspServerDiscoverySmokeTest

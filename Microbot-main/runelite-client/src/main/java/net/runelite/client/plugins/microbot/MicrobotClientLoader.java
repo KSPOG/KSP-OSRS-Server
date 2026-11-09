@@ -118,6 +118,7 @@ public class MicrobotClientLoader implements Supplier<Client>
 		// Private profile is explicit and fail-closed: never fall back to official hosts.
 		if (KspPrivateServerConfig.enabled())
 		{
+			KspServerDiscovery.verifyReady();
 			MicrobotRSConfig local = clientConfigLoader.fetch(url);
 			if (Strings.isNullOrEmpty(local.getCodeBase()) || Strings.isNullOrEmpty(local.getInitialJar()) || Strings.isNullOrEmpty(local.getInitialClass()))
 			{

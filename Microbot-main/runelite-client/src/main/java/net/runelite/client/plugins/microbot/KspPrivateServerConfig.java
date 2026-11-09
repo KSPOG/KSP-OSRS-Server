@@ -23,6 +23,13 @@ public final class KspPrivateServerConfig
             System.getenv("KSP_OSRS_PRIVATE_JAV_CONFIG_URL"));
     }
 
+    public static String discoveryUrl()
+    {
+        String configured = System.getenv("KSP_OSRS_DISCOVERY_URL");
+        return resolve("", "true", configured == null || configured.isBlank()
+            ? "http://127.0.0.1:8087/client/manifest" : configured);
+    }
+
     /** Pure helper for deterministic testing. */
     public static String resolve(String official, String enabled, String privateUrl)
     {
