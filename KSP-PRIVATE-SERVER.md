@@ -21,3 +21,17 @@ Remove the environment variables to use normal Microbot startup. RSProx is not r
 In opt-in private mode, RuneLite `WorldClient.lookupWorlds()` now reads from `http://127.0.0.1:8087/client/worlds.js` instead of the official RuneLite world-directory service. Override using `KSP_OSRS_WORLDS_URL` (only HTTP loopback is permitted). The API returns F2P/P2P flags and omits stopped worlds.
 
 This changes **the RuneLite world service** only. The injected game client's internal world list, game protocol, cache/JS5 update service, and private login remain outstanding. No login success is claimed.
+
+## Verify actual OSRS revision (required before protocol activation)
+
+The uploaded Microbot source reports application version 2.6.55, which is **not** proof of an OSRS game protocol revision. A diagnostic probe now logs the active injected client's `getRevision()` when opted in:
+
+```powershell
+$env:KSP_OSRS_LOG_REVISION = "true"
+Remove-Item Env:KSP_OSRS_PRIVATE_SERVER -ErrorAction SilentlyContinue
+# Launch the locally compiled Microbot client as normal.
+```
+
+Look for `KSP_OSRS_REVISION | revision=<number> buildId=<id> privateProfile=false` in Microbot's log. Use a build from the **client branch** with the diagnostic commit, not an older released Microbot JAR. Share only the revision/build ID line; redact usernames, authentication details and session tokens. A verified matching gamepack and cache are still required for actual integration tests.
+
+RSProt revision 242 is available under MIT, but must **not** be activated unless the OSRS client revision and cache are known to match. The server's protocol laboratory is deliberately isolated from live listeners.
