@@ -13,6 +13,7 @@ public final class ServerMain {
     private static final Map<Integer,World> worlds=new TreeMap<>();
     private static final Set<Integer> running=new HashSet<>();
     private static Path worldStatePath;
+    private static WorldSocketManager sockets;
     private static final byte[] secret=System.getenv().getOrDefault("KSP_ADMIN_TOKEN","").getBytes(StandardCharsets.UTF_8);
     private static void send(HttpExchange ex,int status,String mime,String value)throws IOException {
         byte[] bytes=value.getBytes(StandardCharsets.UTF_8);
@@ -29,7 +30,7 @@ public final class ServerMain {
     }
     private static synchronized String worldsJson(){
         StringJoiner result=new StringJoiner(",","[","]");
-        for(World w:worlds.values())result.add("{\"id\":"+w.id()+",\"type\":\""+w.type()+"\",\"capacity\":"+w.capacity()+",\"running\":"+running.contains(w.id())+",\"population\":0}");
+        for(World w:worlds.values())result.add("{\"id\":"+w.id()+",\"type\":\""+w.type()+"\",\"capacity\":"+w.capacity()+",\"running\":"+running.contains(w.id())+",\"listenerActive\":"+sockets.listening(w.id())+",\"tcpPort\":"+sockets.port(w.id())+",\"rejectedConnections\":"+sockets.attempts(w.id())+",\"population\":0}");
         return result.toString();
     }
     private static synchronized void admin(HttpExchange ex)throws IOException {
@@ -43,11 +44,25 @@ public final class ServerMain {
             if(!worlds.containsKey(id)){send(ex,404,"application/json","{\"error\":\"Unknown world\"}");return;}
             String action=parts[5];
             boolean wasRunning=running.contains(id);
-            if(action.equals("start"))running.add(id);else running.remove(id);
-            try { WorldStateStore.save(worldStatePath, worlds.keySet(), running); }
-            catch(IOException failure) {
+            try {
+                if(action.equals("start")) {
+                    sockets.start(id);
+                    running.add(id);
+                } else {
+                    sockets.stop(id);
+                    running.remove(id);
+                }
+                WorldStateStore.save(worldStatePath, worlds.keySet(), running);
+            } catch (IOException failure) {
+                // Restore the previous authoritative state as far as possible.
+                try {
+                    if(wasRunning) sockets.start(id); else sockets.stop(id);
+                } catch(IOException restorationFailure) {
+                    System.err.println("[WORLD_CONTROL] failed to restore world "+id+": "+restorationFailure.getMessage());
+                }
                 if(wasRunning)running.add(id);else running.remove(id);
-                send(ex,500,"application/json","{\"error\":\"Unable to persist world state\"}");
+                System.err.println("[WORLD_CONTROL] world="+id+" action="+action+" failed: "+failure.getMessage());
+                send(ex,500,"application/json","{\"error\":\"World lifecycle operation failed\"}");
                 return;
             }
             System.out.println("[WORLD_CONTROL] world="+id+" action="+action);
@@ -71,6 +86,13 @@ public final class ServerMain {
         if(worlds.isEmpty())throw new IllegalArgumentException("No worlds configured");
         worldStatePath=Path.of(System.getenv().getOrDefault("KSP_WORLD_STATE_FILE","data/world-states.properties"));
         WorldStateStore.load(worldStatePath, worlds.keySet(), running);
+        sockets = new WorldSocketManager(Integer.parseInt(System.getenv().getOrDefault("KSP_WORLD_PORT_BASE", "43000")));
+        try {
+            for(int id:running) sockets.start(id);
+        } catch(IOException bindError) {
+            sockets.close();
+            throw new IOException("Unable to start configured world TCP listeners",bindError);
+        }
         HttpServer http=HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(),8087),0);
         http.createContext("/health",ex->send(ex,200,"application/json","{\"status\":\"ok\",\"gameProtocol\":\"NOT_IMPLEMENTED\"}"));
         http.createContext("/client/manifest",ex->{
@@ -85,7 +107,7 @@ public final class ServerMain {
             ex.getResponseHeaders().set("Content-Security-Policy","default-src 'none';script-src 'unsafe-inline';style-src 'unsafe-inline';connect-src 'self';base-uri 'none';frame-ancestors 'none'");
             send(ex,200,"text/html; charset=utf-8",Files.readString(Path.of("dashboard/index.html")));
         });
-        Runtime.getRuntime().addShutdownHook(new Thread(()->http.stop(0)));
+        Runtime.getRuntime().addShutdownHook(new Thread(()->{http.stop(0);sockets.close();}));
         http.start();
         System.out.println("World coordinator http://localhost:8087/admin (loopback only)");
         System.out.println("OSRS login/game protocol NOT IMPLEMENTED");

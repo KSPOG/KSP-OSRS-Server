@@ -1,13 +1,17 @@
-# KSP OSRS World Coordinator
+# KSP OSRS Server — world coordinator / TCP transport scaffold
 
-Java 21: set `KSP_ADMIN_TOKEN` (at least 24 characters), then run `scripts/run.bat` on Windows or `scripts/run.sh` on Linux. Dashboard: http://localhost:8087/admin.
+Requires **JDK 21**. Set a 24+ character `KSP_ADMIN_TOKEN`, and execute `scripts/run.bat` (Windows) or `scripts/run.sh`. Dashboard: http://localhost:8087/admin.
 
-- Start or stop **world availability flags** for independently configured F2P/P2P world definitions.
-- Persist world states to `data/world-states.properties` (override path using `KSP_WORLD_STATE_FILE`).
-- Public read-only discovery: `GET /client/manifest` returns world definitions plus honest protocol-readiness flags.
-- Authenticated controls: `GET /admin/api/worlds`; `POST /admin/api/worlds/{id}/start` and `.../stop`.
-- Dashboard and API bind to loopback only. Do not expose port 8087 to external networks.
+## World lifecycle
 
-**Not playable:** `gameProtocolReady=false`. Login, RS game packets, world simulation, bank synchronization, and Microbot login are not yet implemented. The old bank editor is a separate prototype and is not wired to this coordinator.
+- Configure F2P/P2P worlds in `config/worlds.csv`.
+- Each running world owns a real **loopback-only TCP listener** at `KSP_WORLD_PORT_BASE + world ID` (default base 43000; World 301 = port 43301).
+- Stop closes the listener; Start binds it. Binding failures return HTTP 500 and do not mark the world running.
+- Availability persists across coordinator restarts at `data/world-states.properties` (overridable with `KSP_WORLD_STATE_FILE`).
+- Dashboard and admin API show `listenerActive`, `tcpPort`, and rejected connection attempts; `population=0` until genuine game sessions exist.
+- `GET /client/manifest` returns public read-only world states and `gameProtocolReady=false`; `javConfigReady=false`.
+- Changes require bearer-token admin API access. Admin HTTP and TCP listeners bind only to loopback.
 
-CI verifies compilation, auth, world lifecycle state, persistence across restart, and discovery.
+**Crucial:** TCP sockets immediately disconnect clients. OSRS login, encryption, packets, movement, cache and game world replication have NOT been implemented. Do not interpret open TCP ports as a playable private server. No RSProx is needed.
+
+The earlier local bank dashboard prototype has **not** been integrated into this GitHub coordinator.
