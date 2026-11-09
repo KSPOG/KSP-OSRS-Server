@@ -1,5 +1,6 @@
 plugins {
     java
+    application
 }
 
 group = "dev.ksp.osrs"
@@ -29,4 +30,8 @@ tasks.register("verifyProtocolDependencies") {
         }) { "RSProt revision 242 artifact missing" }
         println("RSProt revision 242 dependency resolved. This does not mean login is implemented.")
     }
+}
+
+application {
+    mainClass.set("dev.ksp.osrs.protocol.ProtocolApiCheck")
 }
