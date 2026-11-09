@@ -12,25 +12,40 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Compile and check world lifecycle
+      - name: Compile and verify discovery, auth, persistence
         shell: bash
         env:
           KSP_ADMIN_TOKEN: local-ci-token-very-long-123456789
+          KSP_WORLD_STATE_FILE: data/ci-world-states.properties
         run: |
           set -euo pipefail
           cd server
           mkdir -p build/classes
-          javac --release 21 -d build/classes src/main/java/dev/ksp/osrs/ServerMain.java
-          java -cp build/classes dev.ksp.osrs.ServerMain config/worlds.csv > ci.log 2>&1 &
-          PID=$!
-          trap 'kill $PID 2>/dev/null || true' EXIT
-          for attempt in {1..25}; do
-            if curl --silent --fail http://localhost:8087/health >/dev/null; then break; fi
-            sleep 1
-          done
-          curl --fail --silent http://localhost:8087/health | grep -q NOT_IMPLEMENTED
+          javac --release 21 -d build/classes src/main/java/dev/ksp/osrs/*.java
+          start_server() {
+            java -cp build/classes dev.ksp.osrs.ServerMain config/worlds.csv > ci.log 2>&1 &
+            PID=$!
+            for attempt in {1..30}; do
+              if curl --silent --fail http://localhost:8087/health >/dev/null; then return; fi
+              sleep 1
+            done
+            cat ci.log
+            exit 1
+          }
+          stop_server() {
+            kill "$PID" 2>/dev/null || true
+            wait "$PID" 2>/dev/null || true
+          }
+          trap 'stop_server' EXIT
+          start_server
+          curl --fail --silent http://localhost:8087/client/manifest | grep -q '"gameProtocolReady":false'
           curl --fail --silent -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds | grep -q '"id":301'
           curl --fail --silent -X POST -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds/301/stop | grep -q '"running":false'
-          curl --fail --silent -X POST -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds/301/start | grep -q '"running":true'
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8087/admin/api/worlds/301/stop)
+          grep -q 'world.301=false' "$KSP_WORLD_STATE_FILE"
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8087/admin/api/worlds/301/start)
           test "$STATUS" = "401"
+          stop_server
+          sleep 1
+          start_server
+          curl --fail --silent -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds | grep -q '"id":301,"type":"F2P","capacity":2000,"running":false'
+          curl --fail --silent -X POST -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds/301/start | grep -q '"running":true'
