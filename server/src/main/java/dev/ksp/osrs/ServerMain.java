@@ -117,7 +117,7 @@ public final class ServerMain {
             if(!ex.getRequestURI().getPath().equals("/client/manifest")||!ex.getRequestMethod().equals("GET")){
                 send(ex,405,"application/json","{\"error\":\"Method not allowed\"}");return;
             }
-            send(ex,200,"application/json","{\"schemaVersion\":1,\"gameProtocolReady\":false,\"javConfigReady\":false,\"clientRevision\":null,\"worlds\":"+worldsJson()+"}");
+            send(ex,200,"application/json","{\"schemaVersion\":1,\"gameProtocolReady\":false,\"javConfigReady\":false,\"clientRevision\":242,\"clientBuildId\":\"41605773992.307\",\"revisionVerified\":true,\"worlds\":"+worldsJson()+"}");
         });
         http.createContext("/client/worlds.js",ex->{
             if(!ex.getRequestURI().getPath().equals("/client/worlds.js")

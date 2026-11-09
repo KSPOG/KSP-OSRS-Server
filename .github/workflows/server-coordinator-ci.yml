@@ -45,6 +45,8 @@ jobs:
           }
           start_server
           curl --fail --silent http://localhost:8087/client/manifest | grep -q '"gameProtocolReady":false'
+          curl --fail --silent http://localhost:8087/client/manifest | grep -q '"clientRevision":242'
+          curl --fail --silent http://localhost:8087/client/manifest | grep -q '"revisionVerified":true'
           curl --fail --silent -H "Authorization: Bearer $KSP_ADMIN_TOKEN" http://localhost:8087/admin/api/worlds | grep -q '"listenerActive":true'
           check_port 43301 open
           check_port 43308 closed

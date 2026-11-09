@@ -18,3 +18,9 @@ Inspected from the uploaded Microbot source:
 6. Connect live account/bank persistence and membership restrictions to world sessions.
 
 The currently implemented loopback TCP listeners immediately close sockets. The discovery manifest correctly reports `gameProtocolReady=false` and `javConfigReady=false`. Do not flip those flags until functionality has passed integration tests. RSProx is not required.
+
+## Observed gamepack revision — 2026-11-10
+
+Microbot 2.6.55's injected client was observed at `GameState.LOGIN_SCREEN` with `Client.getRevision() == 242` and `Client.getBuildID() == "41605773992.307"` on Temurin 21.0.13. This is a runtime observation, *not* merely a guess from the build ID suffix. The discovery manifest now advertises `clientRevision:242`, `clientBuildId`, and `revisionVerified:true`.
+
+This confirms the revision selection for the RSProt-242 integration laboratory. It does **not** confirm that a matching JS5 cache, private gamepack, RSA keys, login handshake, or player protocol exists. Keep `gameProtocolReady=false` and `javConfigReady=false` until integration tests validate these components.
