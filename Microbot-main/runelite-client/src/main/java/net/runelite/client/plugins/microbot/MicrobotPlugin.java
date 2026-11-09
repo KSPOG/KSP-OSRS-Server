@@ -202,6 +202,20 @@ public class MicrobotPlugin extends Plugin
 		log.info("Microbot: {} - {}", RuneLiteProperties.getMicrobotVersion(), RuneLiteProperties.getMicrobotCommit());
 		log.info("JVM: {} {}", System.getProperty("java.vendor"), System.getProperty("java.runtime.version"));
 
+        // The first state-change event may have fired before this plugin subscribed.
+        // A startup snapshot records the actual state without waiting for login.
+        if ("true".equalsIgnoreCase(System.getenv("KSP_OSRS_LOG_REVISION")))
+        {
+            Client revisionClient = Microbot.getClient();
+            if (revisionClient != null)
+            {
+                log.info("KSP_OSRS_REVISION_SNAPSHOT | revision={} buildId={} state={} privateProfile={}",
+                    revisionClient.getRevision(), revisionClient.getBuildID(), revisionClient.getGameState(),
+                    KspPrivateServerConfig.enabled());
+                KspRuntimeRevisionProbe.inspect(revisionClient, revisionClient.getGameState());
+            }
+        }
+
 		microbotVersionChecker.checkForUpdate();
 
 		gameChatAppender = new GameChatAppender();
