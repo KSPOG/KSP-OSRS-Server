@@ -1,0 +1,36 @@
+name: Build Windows-ready server coordinator
+on:
+  push:
+    branches: [server]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-distribution.yml'
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile and assemble coordinator
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd server
+          mkdir -p build/classes dist/KSP-OSRS-Server/config dist/KSP-OSRS-Server/dashboard dist/KSP-OSRS-Server/scripts
+          javac --release 21 -encoding UTF-8 -d build/classes src/main/java/dev/ksp/osrs/*.java
+          jar --create --file dist/KSP-OSRS-Server/ksp-osrs-coordinator.jar -C build/classes .
+          cp config/worlds.csv dist/KSP-OSRS-Server/config/
+          cp dashboard/*.html dist/KSP-OSRS-Server/dashboard/
+          cp scripts/run-distribution.bat dist/KSP-OSRS-Server/scripts/
+          cp README.md dist/KSP-OSRS-Server/README.md
+          cd dist
+          zip -r KSP-OSRS-Server-coordinator.zip KSP-OSRS-Server >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KSP-OSRS-Server-coordinator
+          path: server/dist/KSP-OSRS-Server-coordinator.zip
+          retention-days: 14
