@@ -1,0 +1,21 @@
+name: Microbot full compile (integration gate)
+on:
+  push:
+    branches: [client]
+  workflow_dispatch:
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile complete Microbot client
+        shell: bash
+        working-directory: Microbot-main
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :client:compileJava --no-daemon --stacktrace
