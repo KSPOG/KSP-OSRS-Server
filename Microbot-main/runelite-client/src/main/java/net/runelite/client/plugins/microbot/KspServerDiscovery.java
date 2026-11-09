@@ -13,9 +13,9 @@ import java.util.regex.Pattern;
 public final class KspServerDiscovery
 {
     private static final Pattern GAME_READY =
-        Pattern.compile("\\"gameProtocolReady\\"\\s*:\\s*true");
+        Pattern.compile("\"gameProtocolReady\"\\s*:\\s*true");
     private static final Pattern CONFIG_READY =
-        Pattern.compile("\\"javConfigReady\\"\\s*:\\s*true");
+        Pattern.compile("\"javConfigReady\"\\s*:\\s*true");
     private static final int MAX_MANIFEST_BYTES = 64 * 1024;
 
     private KspServerDiscovery() {}
