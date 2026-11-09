@@ -404,6 +404,7 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged)
 	{
+		KspRuntimeRevisionProbe.inspect(Microbot.getClient(), gameStateChanged.getGameState());
 	   if (isLoginServerRequest(LoginManager.getLastKnownGameState(), gameStateChanged.getGameState()))
 	   {
 		   executor.execute(() -> HopBudget.getInstance().recordHop());
@@ -775,6 +776,7 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		KspRuntimeRevisionProbe.inspect(Microbot.getClient(), Microbot.getClient().getGameState());
 		// Cheap identity check: a stale registration leaves the arbiter deaf with no other symptom.
 		CanvasInputListener.attach();
 
