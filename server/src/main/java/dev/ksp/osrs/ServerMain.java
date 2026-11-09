@@ -47,7 +47,7 @@ public final class ServerMain {
             try { WorldStateStore.save(worldStatePath, worlds.keySet(), running); }
             catch(IOException failure) {
                 if(wasRunning)running.add(id);else running.remove(id);
-                send(ex,500,"application/json","{\\"error\\":\\"Unable to persist world state\\"}");
+                send(ex,500,"application/json","{\"error\":\"Unable to persist world state\"}");
                 return;
             }
             System.out.println("[WORLD_CONTROL] world="+id+" action="+action);
@@ -75,9 +75,9 @@ public final class ServerMain {
         http.createContext("/health",ex->send(ex,200,"application/json","{\"status\":\"ok\",\"gameProtocol\":\"NOT_IMPLEMENTED\"}"));
         http.createContext("/client/manifest",ex->{
             if(!ex.getRequestURI().getPath().equals("/client/manifest")||!ex.getRequestMethod().equals("GET")){
-                send(ex,405,"application/json","{\\"error\\":\\"Method not allowed\\"}");return;
+                send(ex,405,"application/json","{\"error\":\"Method not allowed\"}");return;
             }
-            send(ex,200,"application/json","{\\"schemaVersion\\":1,\\"gameProtocolReady\\":false,\\"javConfigReady\\":false,\\"clientRevision\\":null,\\"worlds\\":"+worldsJson()+"}");
+            send(ex,200,"application/json","{\"schemaVersion\":1,\"gameProtocolReady\":false,\"javConfigReady\":false,\"clientRevision\":null,\"worlds\":"+worldsJson()+"}");
         });
         http.createContext("/admin/api",ServerMain::admin);
         http.createContext("/admin",ex->{
