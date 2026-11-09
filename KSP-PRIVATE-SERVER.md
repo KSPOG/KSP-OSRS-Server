@@ -50,3 +50,7 @@ The early `ClientLoader` diagnostic can legitimately print `revision=0` before t
 The injected build ID suffix (for example `.307`) is not, by itself, certified proof of the wire-protocol/cache revision. Do not activate RSProt 242 or another implementation from that suffix alone.
 
 To apply this diagnostic from GitHub without Git CLI, update **both** `MicrobotPlugin.java` and `KspRuntimeRevisionProbe.java` from the same client branch commit. Recompile using the existing revision probe script. Copy only the `KSP_OSRS_REVISION_READY` or `KSP_OSRS_REVISION_UNAVAILABLE` log line, not the full client log containing account metadata.
+
+## Verified OSRS revision 242 (10 Nov 2026)
+
+The actual injected game client's `Client.getRevision()` returned **242** at `LOGIN_SCREEN`, with build ID `41605773992.307`. This confirms the target protocol revision for this pinned client build. `KspServerDiscovery` rejects mismatched or unverified revisions before checking protocol readiness. The server still has `gameProtocolReady=false` and `javConfigReady=false`, so a private-game login is intentionally unavailable until those systems really exist and are verified.
