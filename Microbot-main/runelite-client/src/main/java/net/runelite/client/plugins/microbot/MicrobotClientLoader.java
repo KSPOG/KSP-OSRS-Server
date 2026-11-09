@@ -63,7 +63,7 @@ public class MicrobotClientLoader implements Supplier<Client>
 		this.clientConfigLoader = new MicrobotClientConfigLoader(okHttpClient);
 		this.worldSupplier = new MicrobotWorldSupplier(okHttpClient);
 		this.runtimeConfigLoader = runtimeConfigLoader;
-		this.javConfigUrl = javConfigUrl;
+		this.javConfigUrl = KspPrivateServerConfig.resolveJavConfigUrl(javConfigUrl);
 	}
 
 	@Override
@@ -115,6 +115,16 @@ public class MicrobotClientLoader implements Supplier<Client>
 	public MicrobotRSConfig downloadConfig() throws IOException
 	{
 		HttpUrl url = HttpUrl.get(javConfigUrl);
+		// Private profile is explicit and fail-closed: never fall back to official hosts.
+		if (KspPrivateServerConfig.enabled())
+		{
+			MicrobotRSConfig local = clientConfigLoader.fetch(url);
+			if (Strings.isNullOrEmpty(local.getCodeBase()) || Strings.isNullOrEmpty(local.getInitialJar()) || Strings.isNullOrEmpty(local.getInitialClass()))
+			{
+				throw new IOException("Invalid private-server jav_config");
+			}
+			return local;
+		}
 		IOException err = null;
 		for (int attempt = 0; attempt < NUM_ATTEMPTS; attempt++)
 		{
