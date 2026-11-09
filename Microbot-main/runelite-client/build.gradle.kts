@@ -578,20 +578,37 @@ tasks.withType<net.runelite.gradle.index.IndexTask> {
 tasks.processResources {
     inputs.property("projectVersion", project.version)
 
+    // Git is useful build metadata, but is not required to compile or launch
+    // the client from an extracted archive or a Windows machine without Git.
     val commit = ByteArrayOutputStream()
-    exec {
-        commandLine("git", "rev-parse", "--short=7", "HEAD")
-        standardOutput = commit
-    }
-
     val dirty = ByteArrayOutputStream()
-    exec {
-        commandLine("git", "status", "--short")
-        standardOutput = dirty
+    try {
+        val revResult = exec {
+            commandLine("git", "rev-parse", "--short=7", "HEAD")
+            standardOutput = commit
+            isIgnoreExitValue = true
+        }
+        if (revResult.exitValue != 0) {
+            logger.warn("Git revision unavailable (exit {}); using configured fallback", revResult.exitValue)
+            commit.reset()
+        }
+        val statusResult = exec {
+            commandLine("git", "status", "--short")
+            standardOutput = dirty
+            isIgnoreExitValue = true
+        }
+        if (statusResult.exitValue != 0) {
+            logger.warn("Git dirty-state unavailable (exit {}); marking build metadata as unknown", statusResult.exitValue)
+            dirty.reset()
+        }
+    } catch (gitUnavailable: org.gradle.process.internal.ExecException) {
+        logger.warn("Git executable unavailable; using configured Microbot build metadata")
+        commit.reset()
+        dirty.reset()
     }
 
     val microbotVersion = microbotVersionProvider.get()
-    val microbotCommit = providers.gradleProperty("microbot.commit.sha").getOrElse(commit.toString().trim())
+    val microbotCommit = providers.gradleProperty("microbot.commit.sha").getOrElse(commit.toString().trim().ifEmpty { "nogit" })
     val microbotBuildChannel = providers.gradleProperty("microbot.build.channel").getOrElse("")
     val microbotBuildRepository = providers.gradleProperty("microbot.build.repository").getOrElse("")
 
