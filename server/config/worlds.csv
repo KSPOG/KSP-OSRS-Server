@@ -1,0 +1,5 @@
+# id,type,capacity,running
+301,F2P,2000,true
+302,P2P,2000,true
+308,F2P,2000,false
+306,P2P,2000,false
