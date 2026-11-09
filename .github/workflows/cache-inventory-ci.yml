@@ -1,0 +1,17 @@
+name: Cache inventory unit tests
+on:
+  push:
+    branches: [server]
+    paths:
+      - 'server/tools/**'
+      - '.github/workflows/cache-inventory-ci.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python server/tools/test_cache_inventory.py
