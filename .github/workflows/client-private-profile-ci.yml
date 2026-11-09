@@ -1,0 +1,24 @@
+name: Microbot private profile smoke tests
+on:
+  push:
+    branches: [client]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify configuration routing without external dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd Microbot-main/runelite-client
+          mkdir -p build/ksp-profile-tests
+          javac --release 21 -d build/ksp-profile-tests \
+            src/main/java/net/runelite/client/plugins/microbot/KspPrivateServerConfig.java \
+            src/test/java/net/runelite/client/plugins/microbot/KspPrivateServerConfigSmokeTest.java
+          java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspPrivateServerConfigSmokeTest
