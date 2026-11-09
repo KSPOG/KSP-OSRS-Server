@@ -39,3 +39,14 @@ RSProt revision 242 is available under MIT, but must **not** be activated unless
 ## Standard client bootstrap now instrumented
 
 The normal `:client:run` entry point uses `net.runelite.client.rs.ClientLoader`, **not** `MicrobotClientLoader`. Both loaders now implement the opt-in private profile, check readiness, and can log `KSP_OSRS_REVISION` with `KSP_OSRS_LOG_REVISION=true`. No official-client fallback occurs in private mode. This fixes the previously missing revision log for the standard launcher. Private gameplay remains blocked while the server advertises `gameProtocolReady=false`.
+
+## Delayed revision probe (commit 4ba2a8d)
+
+The early `ClientLoader` diagnostic can legitimately print `revision=0` before the injected game has initialized. The Microbot plugin now additionally logs:
+
+- `KSP_OSRS_REVISION_READY | revision=... buildId=... state=... privateProfile=...` when `Client.getRevision()` becomes positive.
+- `KSP_OSRS_REVISION_UNAVAILABLE | revision=0 buildId=... state=LOGIN_SCREEN` if the login screen is reached while the method still returns zero.
+
+The injected build ID suffix (for example `.307`) is not, by itself, certified proof of the wire-protocol/cache revision. Do not activate RSProt 242 or another implementation from that suffix alone.
+
+To apply this diagnostic from GitHub without Git CLI, update **both** `MicrobotPlugin.java` and `KspRuntimeRevisionProbe.java` from the same client branch commit. Recompile using the existing revision probe script. Copy only the `KSP_OSRS_REVISION_READY` or `KSP_OSRS_REVISION_UNAVAILABLE` log line, not the full client log containing account metadata.
