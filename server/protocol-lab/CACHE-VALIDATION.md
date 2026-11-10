@@ -237,3 +237,37 @@ Upstream protocol sources:
 A successful replay verifies **only** this deterministic offline JS5
 request/response subset. Client 255/255 master index and signature checking,
 full live connection, and login/world/game protocol are separate gates.
+
+## Master-index wire-fixture gate (not yet certified)
+
+`Js5MasterWireFixtureAudit` is a strict, read-only decoder for a **genuine
+on-wire JS5 (255,255) response** captured by a separate authorized client
+capture tool. It expects the three-byte 0xff/0x00/0xff response prefix,
+512-byte blocks with 0xff continuation markers, and an embedded JS5
+container. It reports any excess bytes after the advertised container
+payload (for example, possible signature material), and compares the
+unframed container byte-for-byte against the local classic VERSIONED
+candidate. A SHA-256 pin for the **unframed container bytes** is mandatory.
+The implementation intentionally cannot generate a genuine fixture and it
+does not validate RSA signatures or client acceptance. A locally generated
+candidate must never be used as the "independent" fixture.
+
+Once the user has an independently captured raw response and has recorded
+its origin, connection/revision information, and SHA-256 of the unframed
+container, the following offline tasks may be used:
+
+```powershell
+& $gradle -p $lab testJs5MasterWireFixtureAudit --no-daemon
+& $gradle -p $lab compareJs5MasterWireFixture "-PcachePath=$cache" `
+    "-PmasterWirePath=C:\path\to\captured-255-255.bin" `
+    "-PmasterContainerSha256=<64-char-sha256-of-unframed-container>" --no-daemon
+```
+
+Upstream evidence: RSProx captures and stores the master-index response
+per world and RSProt 242 requires a provider for request 255/255.
+References:
+- https://github.com/blurite/rsprox/blob/master/proxy/src/main/kotlin/net/rsprox/proxy/server/ServerJs5ResponseDecoder.kt
+- https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-api/src/main/kotlin/net/rsprot/protocol/api/js5/Js5Service.kt
+
+If no authentic fixture exists, this gate stays **PENDING**. Passing
+synthetic tests is not proof of client compatibility.
