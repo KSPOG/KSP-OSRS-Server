@@ -285,3 +285,48 @@ digest of the **unframed** container (the hash needed by the comparator):
 Retain the capture provenance and its own file SHA-256 separately. The
 inspection command reports its structure but does **not** authenticate the
 capture, demonstrate that revision 242 accepts it, or validate a signature.
+
+## Localhost-only master-index capture proxy
+
+`server/tools/js5_master_capture_proxy.py` is an **opt-in, one-session,
+transparent TCP forwarder**, not part of the server's runtime. It listens
+only on `127.0.0.1` and forwards both directions to an explicitly supplied
+upstream. The binary observer excludes RSProt's one-byte successful JS5
+login response (`0x00`) and collects only the first complete upstream
+JS5 master-index response `255/255`. It tolerates fragmented TCP reads,
+handles the 512-byte JS5 continuation markers, and writes only the master
+response and a provenance JSON file with SHA-256. Client-to-server data is
+never persisted. An upstream whose first response is not successful or
+not the master response will not produce a capture.
+
+For an **authorized** revision-242 client/server environment where you
+control the client's JS5 host and port setting and upstream endpoint:
+
+```powershell
+$repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server"
+$proxy = Join-Path $repo "server\tools\js5_master_capture_proxy.py"
+$wire = Join-Path $repo "server\cache-validation\captured-255-255.bin"
+python $proxy --upstream-host <AUTHORIZED_JS5_HOST> --upstream-port <PORT> `
+    --listen-port 43595 --output $wire
+```
+
+Connect the authorized client **to 127.0.0.1:43595**. This script does not
+change client configuration or reroute official traffic; it captures
+nothing until you make that explicit local connection. Do not use it on a
+third-party server without permission. Do not attempt a real client
+connection until its endpoints and revision are established.
+
+Then run:
+```powershell
+& $gradle -p $lab inspectJs5MasterWireFixture "-PmasterWirePath=$wire" --no-daemon
+```
+
+The unframed container SHA-256 printed by inspection is suitable for the
+separate pinned comparison task. Preserve the `.provenance.json` sidecar
+and the actual client build/server endpoint records. The proxy cannot
+authenticate the source or determine signature validity by itself.
+
+Python regression:
+`python -m unittest -v server/tools/test_js5_master_capture_proxy.py`
+(from the `server/tools` directory, run
+`python -m unittest -v test_js5_master_capture_proxy.py`).
