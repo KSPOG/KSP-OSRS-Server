@@ -25,6 +25,10 @@ public final class VerifiedJs5GroupProviderTest {
             byte[] reference = reference(expected);
             write(root, 255, 0, reference, 1);
             write(root, 0, 0, withSuffix, 2);
+            var audit = Js5MasterIndexAudit.audit(root);
+            if (audit.entries() != 1 || audit.present() != 1
+                || audit.crcVerified() != 1 || audit.revisionVerified() != 1)
+                throw new AssertionError("Local master-index candidate audit failed");
             var master = Js5MasterIndexCandidate.build(root);
             if (master.entries() != 1 || master.present() != 1 || master.absent() != 0)
                 throw new AssertionError("Master-index candidate entries are incorrect");
