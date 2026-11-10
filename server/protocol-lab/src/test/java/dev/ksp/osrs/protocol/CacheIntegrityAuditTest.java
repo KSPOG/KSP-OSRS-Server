@@ -16,12 +16,25 @@ public final class CacheIntegrityAuditTest {
         int expected = (int)crc.getValue();
 
         var trailer = CacheIntegrityAudit.compareGroupCrc(versioned, expected);
-        if (!trailer.matched() || !trailer.hasVersionTrailer())
+        if (!trailer.matched() || trailer.excludedSuffixBytes() != 2)
             throw new AssertionError("Version trailer CRC not detected");
 
         var without = CacheIntegrityAudit.compareGroupCrc(body, expected);
-        if (!without.matched() || without.hasVersionTrailer())
+        if (!without.matched() || without.excludedSuffixBytes() != 0)
             throw new AssertionError("Full container CRC not detected");
+
+        byte[] versionedFour = Arrays.copyOf(body, body.length + 4);
+        versionedFour[body.length] = 17;
+        versionedFour[body.length + 1] = 99;
+        versionedFour[body.length + 2] = 0;
+        versionedFour[body.length + 3] = 7;
+        var four = CacheIntegrityAudit.compareGroupCrc(versionedFour, expected);
+        if (!four.matched() || four.excludedSuffixBytes() != 4)
+            throw new AssertionError("Four byte cache suffix CRC not detected");
+        var fourLayout = CacheIntegrityAudit.describeGroup(versionedFour, 7);
+        if (!fourLayout.contains("suffixBytes=4")
+            || !fourLayout.contains("trailingVersion=7"))
+            throw new AssertionError("Four byte cache suffix layout diagnostic failed");
 
         byte[] corrupted = versioned.clone();
         corrupted[4] ^= 1;
