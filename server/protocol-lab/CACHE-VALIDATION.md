@@ -210,3 +210,30 @@ Passing this gate plus `auditRevision242Metadata` establishes local archive
 metadata and group consistency across the **advertised** cache, not the
 revision-242 client's acceptance of JS5 255/255, response signing, login,
 or world service. Do not enable sockets on this basis.
+
+## Offline RSProt-242 request exchange
+
+The `Js5OfflineExchange` harness follows RSProt osrs-242's fixed four-byte
+JS5 client packets: opcode 0=prefetch, 1=urgent, 2=priority-high,
+3=priority-low, 4=XOR change; each opcode has a three-byte payload.
+Prefetch/urgent payloads contain a one-byte archive id and a big-endian
+two-byte group id. XOR change uses the first payload byte and reserves the
+other two. It rejects malformed packets, unsupported opcodes, nonzero XOR
+and does not claim to implement queuing, scheduling, socket handshakes,
+login, or actual master-index responses. The executable safely checks
+an actual archive-24 group and its archive-255 reference table against the
+local provider, while explicitly denying the unverified special 255/255.
+
+Upstream protocol sources:
+- https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/js5/incoming/prot/Js5ClientProtId.kt
+- https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/js5/incoming/codec/PrefetchRequestDecoder.kt
+- https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-api/src/main/kotlin/net/rsprot/protocol/api/js5/Js5Service.kt
+
+```powershell
+& $gradle -p $lab testJs5OfflineExchange --no-daemon
+& $gradle -p $lab auditJs5OfflineExchange "-PcachePath=$cache" --no-daemon
+```
+
+A successful replay verifies **only** this deterministic offline JS5
+request/response subset. Client 255/255 master index and signature checking,
+full live connection, and login/world/game protocol are separate gates.
