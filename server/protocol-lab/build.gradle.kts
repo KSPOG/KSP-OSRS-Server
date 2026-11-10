@@ -309,3 +309,11 @@ tasks.register<JavaExec>("auditJs5HandshakeDiagnostic") {
         args(cache)
     }
 }
+
+tasks.register<JavaExec>("testJs5HandshakeDiagnostic") {
+    group = "verification"
+    description = "CI-ready synthetic cache socket test for revision-242 login and fail-closed semantics."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5HandshakeDiagnosticTest")
+}
