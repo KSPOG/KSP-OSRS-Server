@@ -157,3 +157,28 @@ Passing these tests or matching a fixture is **not** OSRS revision-242
 certification without independently established source provenance and client
 acceptance. The read-only provider still rejects request (255,255);
 all live network listeners remain disabled.
+
+## Independent revision-242 metadata fingerprint (OpenRS2 cache 2757)
+
+The Jagex-sourced OpenRS2 cache snapshot for oldschool/live/en revision 242,
+dated 2026-11-03, lists 25 archive entries (0–24), of which archive 16 and
+23 are absent. Archive 24 contains 18 groups and revision 1. The total listed
+groups are 120,374: https://archive.openrs2.org/caches/runescape/2757
+
+The previous local idx255 audit listed 23 slots (0–22) and 120,356
+advertised groups. This is consistent with missing archive 24, but is
+**not** evidence the full cache is intact. The new read-only metadata audit
+independently compares each reference-container CRC32, reference revision, and
+advertised group count. A missing archive is reported explicitly and fails
+the task when the archived reference expects it. It does not modify the cache
+or enable network listeners.
+
+```powershell
+gradle -p server/protocol-lab testRevision242MetadataAudit
+gradle -p server/protocol-lab auditRevision242Metadata "-PcachePath=C:\Users\Proje\.runelite\jagexcache\oldschool\LIVE"
+```
+
+The comparator's source metadata is a checked-in transcription of OpenRS2's
+published table; the archive's master-index *wire container* and client
+signature requirements still have not been independently compared. Do not
+substitute this metadata audit for client-acceptance certification.
