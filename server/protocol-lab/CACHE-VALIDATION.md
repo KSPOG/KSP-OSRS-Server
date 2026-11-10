@@ -182,3 +182,31 @@ The comparator's source metadata is a checked-in transcription of OpenRS2's
 published table; the archive's master-index *wire container* and client
 signature requirements still have not been independently compared. Do not
 substitute this metadata audit for client-acceptance certification.
+
+## Exhaustive JS5 group validation gate
+
+The sampled audits inspect only up to 16 CRCs per archive and 8 framed
+responses per archive. The additional read-only `auditAllJs5Groups` task
+visits **every group advertised** by all available reference tables. It
+checks disk reads, CRC32 of the correct container bytes (supports 0/2/4-byte
+cache suffixes), container boundaries, and the low 16 bits of group version
+when a trailer exists. Missing or corrupt groups are counted by category.
+With `-PverifyProvider=true`, it additionally checks the exact bytes,
+header and continuation markers of **every** provider response (slower,
+as each group is fetched a second time). No files are written or
+network listeners created. Failures cause a nonzero process exit.
+
+After synchronizing the sources and Gradle tasks:
+
+```powershell
+$repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server"
+$lab = Join-Path $repo "server\protocol-lab"
+$cache = Join-Path $repo "server\cache-validation\openrs2-2757\extracted\cache"
+& $gradle -p $lab testExhaustiveCacheAudit testJs5HandshakePayload --no-daemon
+& $gradle -p $lab auditAllJs5Groups "-PcachePath=$cache" -PverifyProvider=true --no-daemon
+```
+
+Passing this gate plus `auditRevision242Metadata` establishes local archive
+metadata and group consistency across the **advertised** cache, not the
+revision-242 client's acceptance of JS5 255/255, response signing, login,
+or world service. Do not enable sockets on this basis.
