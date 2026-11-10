@@ -470,8 +470,8 @@ nonzero and **preserves the external fixture** for investigation.
 A byte-for-byte match would verify the candidate against this independently
 archived container. It **would not** establish that the official
 revision-242 client accepts the content or prove its signature trust chain.
-The OpenRS2 endpoint's availability for this particular cache has not
-yet been independently confirmed in the lab environment.
+The OpenRS2 endpoint was subsequently downloaded and byte-verified on
+Windows; see the VERIFIED section below.
 
 References:
 - https://archive.openrs2.org/api
@@ -511,8 +511,8 @@ starting.
 The probe is intentionally limited to **127.0.0.1**, one session,
 32 JS5 requests, 180 seconds to connect and 7 seconds per read.
 This is a diagnostic service only; no game login/scene/player state or
-public endpoint. It records only aggregate socket request/response counts
-and termination status.
+public endpoint. It records request opcode/archive/group identifiers, response byte counts,
+aggregate counts and termination status, but never seed words or account data.
 
 Windows PowerShell 5.1, Git-free preflight (does NOT listen):
 
