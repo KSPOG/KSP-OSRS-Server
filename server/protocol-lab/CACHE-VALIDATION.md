@@ -89,3 +89,20 @@ the reference tables; it is not served at 255/255 because the actual master
 index format and signing requirements for OSRS revision 242 are not yet
 certified. The provider continues to return null for 255/255. Do not mark
 the server JS5-ready until the master index and handshake are verified.
+
+
+## Local master-index candidate verification
+
+`Js5MasterIndexAudit` independently rereads each reference-table container and
+compares its CRC32 and reference revision to the offline VERSIONED candidate.
+This verifies internal construction but **does not validate the client format**.
+The candidate is not served for request (255,255), and no networking is enabled.
+
+To audit a local game cache, use `server/tools/run-js5-audit.ps1` from the
+`server` branch. It now invokes both `auditJs5Provider` and
+`auditJs5MasterIndex`, against the user-selected local cache directory.
+No private cache bytes are transmitted or committed.
+
+The existing real-cache JS5 provider smoke check passed: 159 inspected,
+159 valid preframed responses, zero unavailable or invalid.
+Authoritative revision-242 master-index compatibility is still unverified.
