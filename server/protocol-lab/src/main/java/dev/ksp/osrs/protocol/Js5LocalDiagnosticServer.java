@@ -11,7 +11,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Explicitly post-handshake, localhost-only TCP diagnostic transport.
@@ -96,7 +95,7 @@ public final class Js5LocalDiagnosticServer {
         if (port < 0 || port > 65535)
             throw new IOException("Invalid diagnostic port");
         ServerSocket server = new ServerSocket();
-        server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 1);
+        server.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port), 1);
         return server;
     }
 
