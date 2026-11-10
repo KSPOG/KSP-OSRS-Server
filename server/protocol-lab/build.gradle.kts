@@ -258,3 +258,29 @@ tasks.register<JavaExec>("inspectJs5MasterWireFixture") {
         args("--inspect", fixture)
     }
 }
+
+tasks.register<JavaExec>("auditJs5LocalDiagnostic") {
+    group = "verification"
+    description = "Loopback-only TCP socket round trip to the verified cache provider; no OSRS client handshake."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5LocalDiagnosticAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
+        args(cache)
+    }
+}
+
+tasks.register<JavaExec>("runJs5LocalDiagnostic") {
+    group = "verification"
+    description = "Single-client post-handshake-only diagnostic socket on localhost, no master 255/255."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5LocalDiagnosticServer")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        val port = providers.gradleProperty("diagnosticPort").orNull ?: "43596"
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
+        require(port.toIntOrNull() in 1..65535) { "Invalid diagnostic port" }
+        args(cache, port, "--one-session")
+    }
+}
