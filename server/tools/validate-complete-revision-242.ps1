@@ -14,7 +14,7 @@ param(
     [switch]$VerifyProvider
 )
 $ErrorActionPreference = "Stop"
-$commit = "3746ed15245c5593c26702dc61434c502e19dd99"
+$commit = "8ece9519e891e9368a9954d775ff5cc9c32e11cd"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not (Test-Path -LiteralPath (Join-Path $lab "build.gradle.kts") -PathType Leaf)) {
     throw "Protocol-lab Gradle project missing from $lab"
@@ -31,7 +31,11 @@ $files = @(
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5ExhaustiveCacheAudit.java",
     "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5ExhaustiveCacheAuditTest.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5HandshakePayload.java",
-    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5HandshakePayloadTest.java"
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5HandshakePayloadTest.java",
+    "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5OfflineExchange.java",
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5OfflineExchangeTest.java",
+    "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/VerifiedJs5GroupProvider.java",
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/VerifiedJs5GroupProviderTest.java"
 )
 $staging = Join-Path $env:TEMP ("ksp-js5-stage-" + [guid]::NewGuid().ToString("N"))
 $backup = Join-Path $Repo ("js5-exhaustive-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
@@ -75,7 +79,7 @@ if (-not $executable) {
     }
 }
 if (-not $executable) { throw "Gradle 8.8 not found" }
-& $executable -p $lab testExhaustiveCacheAudit testJs5HandshakePayload --no-daemon
+& $executable -p $lab testExhaustiveCacheAudit testJs5HandshakePayload testJs5Provider testJs5OfflineExchange --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Synthetic verification failed" }
 & $executable -p $lab auditRevision242Metadata "-PcachePath=$Cache" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Revision-242 metadata comparison failed" }
@@ -83,4 +87,6 @@ $arguments = @("-p", $lab, "auditAllJs5Groups", "-PcachePath=$Cache", "--no-daem
 if ($VerifyProvider) { $arguments += "-PverifyProvider=true" }
 & $executable @arguments
 if ($LASTEXITCODE -ne 0) { throw "Exhaustive JS5 validation failed" }
+& $executable -p $lab auditJs5OfflineExchange "-PcachePath=$Cache" --no-daemon
+if ($LASTEXITCODE -ne 0) { throw "Offline RSProt-242 request exchange failed" }
 Write-Host "Offline checks passed. JS5 255/255 and client compatibility remain UNVERIFIED."
