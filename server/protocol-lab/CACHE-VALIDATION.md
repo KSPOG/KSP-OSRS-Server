@@ -478,3 +478,58 @@ References:
 - https://archive.openrs2.org/caches/runescape/2757
 - https://github.com/blurite/rsprox/blob/master/cache/src/main/kotlin/net/rsprox/cache/util/OpenRs2ApiExtensions.kt
 - https://github.com/blurite/rsprox/blob/master/cache/src/main/kotlin/net/rsprox/cache/identifier/OpenRs2CacheIdentifier.kt
+
+## VERIFIED revision-242 OpenRS2 master-group container (Windows, 2026-11-10)
+
+The user's Windows PowerShell run of
+`verify-openrs2-master-255-255.ps1` successfully downloaded
+`https://archive.openrs2.org/caches/runescape/2757/archives/255/groups/255.dat`.
+The downloaded **independent raw container** (not a captured TCP packet)
+was **byte-identical** to `Js5MasterIndexCandidate.build(cache)`:
+
+- Cache: OpenRS2 2757; build revision 242.
+- Container: 205 bytes, compression 0, 200-byte packed payload.
+- Entries: 25 classic VERSIONED CRC32 + revision pairs.
+- CRC32 differences: 0; revision differences: 0; extra trailing bytes: 0.
+- SHA-256:
+  `a5ab2044f9845e7beffa3bc8a338f0bd21a1156ba1819a438378c4f2d8328e38`.
+
+This independently confirms **master-index content compatibility** with
+that archival reference. It does not establish the official client
+signature-validation trust chain or live client acceptance.
+
+## Explicitly gated localhost master-index client probe
+
+The opt-in `Js5VerifiedMasterProbe` now permits group `255/255`
+**only after** its raw archived container matches the above fixed SHA-256
+**and** the bytes computed from the supplied local cache. The existing
+`Js5HandshakeDiagnosticServer.serveOne(listener,cache)` still blocks
+255/255 by default. Only the explicit probe executable uses admitted
+master bytes. Any incorrect archive file prevents the listener from
+starting.
+
+The probe is intentionally limited to **127.0.0.1**, one session,
+32 JS5 requests, 180 seconds to connect and 7 seconds per read.
+This is a diagnostic service only; no game login/scene/player state or
+public endpoint. It records only aggregate socket request/response counts
+and termination status.
+
+Windows PowerShell 5.1, Git-free preflight (does NOT listen):
+
+```powershell
+& "$repo\\server\\tools\\prepare-js5-client-probe.ps1"
+```
+
+To explicitly open the probe for a separately configured and controlled
+revision-242 test client, launch:
+
+```powershell
+& "$repo\\server\\tools\\prepare-js5-client-probe.ps1" -Listen
+```
+
+The client's JS5 upstream must point to `127.0.0.1:43596` and the
+client must initiate RSProt opcode 15 + 20-byte payload. Starting the
+probe **does not** reconfigure or launch the client. A valid handshake
+and cache responses alone do not prove that the client successfully
+reaches a world or that signature constraints have been met. The PR
+must remain a draft until a real client session establishes more.
