@@ -22,10 +22,10 @@ gradle inspectCache '-PcachePath=C:\Users\Proje\.runelite\jagexcache\oldschool\L
 ```
 
 If Gradle is not installed, use the pinned Gradle 8.8 via your local build setup.
-This command reads the master-index container `archive 255 / group 255` and
-reports header/sector validity, *not* full cache compatibility.
+This command reads the reference-table container `archive 255 / group 0` and
+reports header/sector validity, *not* full cache compatibility. The synthetic master index requested on JS5 archive 255/group 255 must be built from archive reference-table metadata. Given the user's idx255 size of 138 bytes (23 entries), group 255 is not present on disk.
 
 **No live JS5 service is connected yet.** RSProt requires correctly formatted
-JS5 groups and a confirmed master index; using the raw `IndexedCacheReader`
+JS5 groups and verified archive reference tables and a synthesized master index; using the raw `IndexedCacheReader`
 directly as a live network provider without framing/checksums would be incorrect.
 No Jagex cache assets or credentials are committed.
