@@ -13,7 +13,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$commit = "2500bbdc1fed07ca630afad24f8d24b82e01a6d9"
+$commit = "00ab1383e587721e69a916b178e6960170b49d65"
 $lab = Join-Path $Repo "server\protocol-lab"
 $directory = Join-Path $lab "src\main\java\dev\ksp\osrs\protocol"
 if (-not (Test-Path -LiteralPath (Join-Path $Cache "main_file_cache.dat2"))) {
@@ -29,7 +29,8 @@ $names = @(
     "Js5WireFraming.java",
     "VerifiedJs5GroupProvider.java",
     "Js5ProviderAudit.java",
-    "Js5MasterIndexCandidate.java"
+    "Js5MasterIndexCandidate.java",
+    "Js5MasterIndexAudit.java"
 )
 foreach ($name in $names) {
     Invoke-WebRequest "$base/src/main/java/dev/ksp/osrs/protocol/$name" -OutFile (Join-Path $directory $name) -UseBasicParsing
@@ -49,6 +50,6 @@ if (-not $executable) {
 if (-not $executable) { throw "Gradle 8.8 not found. Install Gradle or provide it on PATH." }
 Write-Host "Using Gradle: $executable"
 Write-Host "Running local-only JS5 provider validation (network service stays disabled)."
-& $executable -p $lab auditJs5Provider "-PcachePath=$Cache" --no-daemon
+& $executable -p $lab auditJs5Provider auditJs5MasterIndex "-PcachePath=$Cache" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Local JS5 provider audit failed (exit $LASTEXITCODE)." }
-Write-Host "Local JS5 provider audit completed. Revision 242 cache compatibility remains unverified."
+Write-Host "Local provider and master-candidate audits completed. Revision 242 cache compatibility remains unverified."
