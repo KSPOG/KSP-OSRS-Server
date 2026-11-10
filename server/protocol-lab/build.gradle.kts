@@ -117,3 +117,15 @@ tasks.register<JavaExec>("auditJs5Provider") {
         args(cache)
     }
 }
+
+tasks.register<JavaExec>("auditJs5MasterIndex") {
+    group = "verification"
+    description = "Check offline VERSIONED master-index candidate against local reference tables; never enables network delivery."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5MasterIndexAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<local-cache-folder>" }
+        args(cache)
+    }
+}
