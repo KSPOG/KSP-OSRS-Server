@@ -39,11 +39,11 @@ Absent groups are reported separately, and do not automatically fail the check.
 A mismatched CRC or invalid reference structure fails with exit code 3.
 All cache reads are local and read-only. No asset data is published.
 
-Run locally using the Microbot Gradle 8.8 wrapper (Java 21, internet for dependencies):
+Run locally with Gradle 8.8 (Java 21, internet for dependencies). A Microbot wrapper may not exist in your local checkout:
 
 ```powershell
 $repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server"
-& "$repo\Microbot-main\gradlew.bat" -p "$repo\server\protocol-lab" `
+& "C:\Users\Proje\.gradle\wrapper\dists\gradle-8.8-all\6gdy1pgp427xkqcjbxw3ylt6h\gradle-8.8\bin\gradle.bat" -p "$repo\server\protocol-lab" `
     auditCache '-PcachePath=C:\Users\Proje\.runelite\jagexcache\oldschool\LIVE' --no-daemon
 ```
 
@@ -69,3 +69,23 @@ or the completeness of the cache. No cache bytes are included in the repository.
 Remaining: validate actual provider against the local cache, construct
 and certify the JS5 master index, implement handshake and network framing,
 and enable server readiness only after protocol/asset compatibility testing.
+
+## RSProt preframing and local provider smoke testing
+
+RSProt 242 requires the Js5GroupProvider to return a **fully framed** byte
+buffer, not just the compressed cache container. See the upstream
+`Js5Service.prepareJs5Buffer` implementation: archive byte + group short,
+509 bytes in the first block, 0xFF continuation markers at 512-byte offsets,
+then up to 511 bytes per additional block. The `Js5WireFraming` helper now
+follows that layout, and the provider emits framed data with per-request
+CRC verification. Synthetic tests cover 509/510/511 and 1020/1021 boundaries.
+
+Run the read-only check against a local cache with the provided PowerShell 5.1
+bootstrap from `server/tools/run-js5-audit.ps1`; it uses a pinned source commit,
+Gradle 8.8, and doesn't open server sockets or upload cache content.
+
+`Js5MasterIndexCandidate` produces an offline **VERSIONED candidate** from
+the reference tables; it is not served at 255/255 because the actual master
+index format and signing requirements for OSRS revision 242 are not yet
+certified. The provider continues to return null for 255/255. Do not mark
+the server JS5-ready until the master index and handshake are verified.
