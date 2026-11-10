@@ -22,4 +22,4 @@ jobs:
       - name: Compile and resolve pinned RSProt 242
         working-directory: server/protocol-lab
         shell: bash
-        run: gradle compileJava verifyProtocolDependencies run testCacheReader testReferenceTables testCacheMetadata --no-daemon --stacktrace
+        run: gradle compileJava verifyProtocolDependencies run testCacheReader testReferenceTables testCacheMetadata testCacheIntegrity --no-daemon --stacktrace

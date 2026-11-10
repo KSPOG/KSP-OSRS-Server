@@ -83,3 +83,10 @@ tasks.register<JavaExec>("testCacheMetadata") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.CacheMetadataTest")
 }
+
+tasks.register<JavaExec>("testCacheIntegrity") {
+    group = "verification"
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.CacheIntegrityAuditTest")
+}
