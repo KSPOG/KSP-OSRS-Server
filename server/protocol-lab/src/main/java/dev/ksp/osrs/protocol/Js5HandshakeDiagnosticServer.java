@@ -16,7 +16,7 @@ import java.nio.file.Path;
  * Confirms RSProt-242 LOGIN opcode 15 + fixed 20-byte payload + successful
  * login response 0x00 before processing JS5 requests. Loopback only, one
  * connection. This remains NON-PRODUCTION: no master-index authorization,
- * signature handling, XOR encryption, scheduling or full client acceptance.
+ * signature handling, priority scheduling or full client acceptance.
  */
 public final class Js5HandshakeDiagnosticServer {
     public static final int INIT_JS5_OPCODE = 15;
@@ -65,6 +65,7 @@ public final class Js5HandshakeDiagnosticServer {
             output.write(0);
             output.flush();
             int requests = 0, responses = 0;
+            int xorKey = 0;
             long bytes = 0;
             while (requests < REQUEST_LIMIT) {
                 byte[] message = new byte[4];
@@ -85,9 +86,10 @@ public final class Js5HandshakeDiagnosticServer {
                 if (requestOpcode == 2 || requestOpcode == 3)
                     continue; // Supported priority controls; no queue in this harness.
                 if (requestOpcode == 4) {
-                    if (group != 0 || archive != 0)
-                        return new Report(true, requests, responses, bytes, "XOR_UNSUPPORTED");
-                    continue; // No-op zero XOR key only.
+                    // RSProt-242 XorChangeDecoder: first byte is key;
+                    // remaining two bytes are skipped (not validated).
+                    xorKey = archive;
+                    continue;
                 }
                 if (archive == 255 && group == 255)
                     return new Report(true, requests, responses, bytes, "MASTER_NOT_VERIFIED");
@@ -98,6 +100,12 @@ public final class Js5HandshakeDiagnosticServer {
                 try {
                     byte[] frame = new byte[response.readableBytes()];
                     response.readBytes(frame);
+                    // RSProt-242 Js5GroupResponseEncoder XORs the entire
+                    // outgoing framed payload, including archive/group header.
+                    if (xorKey != 0) {
+                        for (int i = 0; i < frame.length; i++)
+                            frame[i] = (byte) (frame[i] ^ xorKey);
+                    }
                     output.write(frame);
                     output.flush();
                     responses++;
