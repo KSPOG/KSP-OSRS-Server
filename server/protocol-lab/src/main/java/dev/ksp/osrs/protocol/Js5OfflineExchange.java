@@ -107,10 +107,21 @@ public final class Js5OfflineExchange {
             System.err.println("Usage: Js5OfflineExchange <cache-folder>");
             System.exit(2);
         }
-        // Contains requests for archive 24 group 0; index 24; a deliberately
-        // unavailable special master index; and normal priority/control frames.
-        byte[] packets = {1, 24, 0, 0, 0, (byte)255, 0, 24, 1, (byte)255,
-            0, (byte)255, 2, 0, 0, 0, 4, 0, 0, 0};
+        // Find a real group from archive 24 rather than assuming group 0
+        // exists in every archive snapshot.
+        int firstGroup;
+        try (var reader = new IndexedCacheReader(Path.of(args[0]))) {
+            byte[] raw = reader.read(255, 24);
+            if (raw == null) throw new IOException("Archive 24 missing");
+            var ref = CacheMetadata.parse(24, CacheMetadata.unpack(raw));
+            firstGroup = ref.groups().keySet().stream().findFirst()
+                .orElseThrow(() -> new IOException("Archive 24 has no groups"));
+        }
+        // Actual archive-24 group, reference table 24, deliberately blocked
+        // special master 255/255, and two safe control messages.
+        byte[] packets = {1, 24, (byte)(firstGroup >>> 8), (byte)firstGroup,
+            0, (byte)255, 0, 24, 1, (byte)255, 0, (byte)255,
+            2, 0, 0, 0, 4, 0, 0, 0};
         Result report = replay(Path.of(args[0]), packets);
         System.out.println("Offline JS5 exchange: requests=" + report.requests()
             + " responses=" + report.responses() + " denied=" + report.denied()
