@@ -14,7 +14,7 @@ param(
     [switch]$VerifyProvider
 )
 $ErrorActionPreference = "Stop"
-$commit = "8bc3ebff466bcb3a9762b76bfb5c86d7fba58086"
+$commit = "7d3c272d085854ac9b56e241e2c6cb2b376183c6"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not (Test-Path -LiteralPath (Join-Path $lab "build.gradle.kts") -PathType Leaf)) {
     throw "Protocol-lab Gradle project missing from $lab"
