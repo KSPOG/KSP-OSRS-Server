@@ -33,6 +33,18 @@ public final class CacheIntegrityAuditTest {
         encryptedCrc.update(encryptedLike);
         if (!CacheIntegrityAudit.compareGroupCrc(encryptedLike, (int)encryptedCrc.getValue()).matched())
             throw new AssertionError("Raw encrypted-like group rejected");
+        String full = CacheIntegrityAudit.describeGroup(body, 7);
+        if (!full.contains("suffixBytes=0") || !full.contains("type=1"))
+            throw new AssertionError("Raw container framing diagnostic incorrect");
+        String versionedLayout = CacheIntegrityAudit.describeGroup(versioned, 7);
+        if (!versionedLayout.contains("suffixBytes=2")
+            || !versionedLayout.contains("trailingVersion=7")
+            || !versionedLayout.contains("expectedVersionLow16=7"))
+            throw new AssertionError("Group version suffix diagnostic incorrect");
+        String shifted = CacheIntegrityAudit.describeGroup(new byte[]{0,0,0,0,1,42,1,2,3,4}, 9);
+        if (!shifted.contains("suffixBytes=4"))
+            throw new AssertionError("Nonstandard suffix must be reported, not accepted");
+
         System.out.println("Raw group CRC framing tests passed");
     }
 }
