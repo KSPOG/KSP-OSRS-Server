@@ -90,3 +90,11 @@ tasks.register<JavaExec>("testCacheIntegrity") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.CacheIntegrityAuditTest")
 }
+
+tasks.register<JavaExec>("testJs5Provider") {
+    group = "verification"
+    description = "Test read-only RSProt JS5 provider, suffix framing and corruption rejection."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.VerifiedJs5GroupProviderTest")
+}
