@@ -297,3 +297,15 @@ tasks.register<JavaExec>("auditJs5MasterCandidateSocket") {
         args(cache)
     }
 }
+
+tasks.register<JavaExec>("auditJs5HandshakeDiagnostic") {
+    group = "verification"
+    description = "Loopback-only revision-242 opcode-15 handshake and JS5 response audit, no real client."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5HandshakeDiagnosticAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
+        args(cache)
+    }
+}
