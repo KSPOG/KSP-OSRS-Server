@@ -29,3 +29,22 @@ reports header/sector validity, *not* full cache compatibility. The synthetic ma
 JS5 groups and verified archive reference tables and a synthesized master index; using the raw `IndexedCacheReader`
 directly as a live network provider without framing/checksums would be incorrect.
 No Jagex cache assets or credentials are committed.
+
+
+## Decoded reference tables and sampled CRC audit
+
+CacheMetadata decodes RuneLite reference-index protocols 5-7 and bounded Jagex BZip2/GZip containers.
+CacheIntegrityAudit inspects all available reference tables and checks up to 16 group CRCs per index.
+Absent groups are reported separately, and do not automatically fail the check.
+A mismatched CRC or invalid reference structure fails with exit code 3.
+All cache reads are local and read-only. No asset data is published.
+
+Run locally using the Microbot Gradle 8.8 wrapper (Java 21, internet for dependencies):
+
+```powershell
+$repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server"
+& "$repo\Microbot-main\gradlew.bat" -p "$repo\server\protocol-lab" `
+    auditCache '-PcachePath=C:\Users\Proje\.runelite\jagexcache\oldschool\LIVE' --no-daemon
+```
+
+This verifies local CRC consistency, not authoritative revision-242 cache compatibility.
