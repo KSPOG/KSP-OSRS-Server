@@ -384,3 +384,34 @@ verify client signature requirements, or test a real revision-242 client.
 
 Independent source for cache format, count and archive-level CRC/revisions:
 https://archive.openrs2.org/caches/runescape/2757
+
+## Revision-242 JS5 initial connection diagnostic
+
+The **experimental localhost-only** `Js5HandshakeDiagnosticServer` accepts
+the exact RSProt-242 JS5 initialization packet: opcode 15, 20-byte fixed
+payload with revision 242 and four 32-bit seed words. It sends a successful
+single-byte `0x00` acknowledgment only on a valid revision, then processes
+bounded 4-byte JS5 requests through the verified cache provider. It handles
+priority control messages as no-ops and the zero XOR key only. Unsupported
+opcodes, nonzero XOR, missing groups and master `255/255` fail closed.
+It stores neither credentials nor the seed. No production service or
+non-loopback listener is registered.
+
+The CI synthetic-cache test covers successful initialization, byte-exact
+reference response, wrong revision/opcode and incomplete initialization.
+The real-cache loopback audit additionally checks the archive-24 reference
+response, safe zero-key controls and refusal to serve `255/255`.
+
+```powershell
+& $gradle -p $lab testJs5HandshakeDiagnostic --no-daemon
+& $gradle -p $lab auditJs5HandshakeDiagnostic "-PcachePath=$cache" --no-daemon
+```
+
+This validates only an initial packet/response subset based on RSProt and
+RSProx. It **does not verify** the client-specific master-index format,
+server signature keys, full scheduling/authentication, or an actual OSRS
+revision-242 client connection.
+
+- https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/prot/LoginClientProt.kt
+- https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/InitJs5RemoteConnectionDecoder.kt
+- https://github.com/blurite/rsprox/blob/master/proxy/src/main/kotlin/net/rsprox/proxy/server/prot/LoginServerProtId.kt
