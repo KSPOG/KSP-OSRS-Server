@@ -123,3 +123,37 @@ Upstream RSProt `Js5Service` requires `provider.provide(255,255)` for
 its master index. Our provider still returns null for that special request.
 No production JS5 network service may be enabled until the matching master
 index format/signature and client bootstrapping are verified.
+
+## Independently pinned master-index reference comparison
+
+The VERSIONED 255/255 candidate is still **not** served to clients. To compare
+it to a separately captured, independently sourced raw JS5 master-index
+*container*, obtain the exact binary response bytes (not JS5 wire block
+headers or a text/hex dump) and independently record its SHA-256 hash.
+Do **not** use the locally generated candidate as the reference: that would
+be a circular test. No reference fixture is bundled or automatically downloaded.
+
+On Windows PowerShell 5.1, after checking out the feature branch:
+
+```powershell
+$repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$repo\server\tools\run-js5-reference-comparison.ps1" `
+    -Repo $repo `
+    -Reference "C:\path\to\independently-captured-master.bin" `
+    -ReferenceSha256 "<actual-64-character-SHA256>"
+```
+
+The task runs offline on the local cache, verifies the file's supplied SHA-256
+pin, and performs byte-for-byte comparison. If both inputs have the exact
+classic uncompressed VERSIONED shape, it also counts per-entry CRC and
+version differences and reports differing entry counts. Any byte difference
+fails with exit status 3. Incorrect/missing pins and malformed fixtures fail
+closed. If the reference is signed, compressed, uses an alternate layout,
+or includes additional fields, the comparator does not claim to decode them.
+
+Run synthetic tests separately with
+`gradle -p server/protocol-lab testJs5MasterReferenceComparator`.
+Passing these tests or matching a fixture is **not** OSRS revision-242
+certification without independently established source provenance and client
+acceptance. The read-only provider still rejects request (255,255);
+all live network listeners remain disabled.
