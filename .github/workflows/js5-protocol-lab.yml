@@ -40,7 +40,8 @@ jobs:
             testJs5HandshakePayload testJs5MasterReferenceComparator \
             testRevision242MetadataAudit testExhaustiveCacheAudit \
             testJs5OfflineExchange testJs5MasterWireFixtureAudit testJs5HandshakeDiagnostic \
-            testJs5HandshakeRequestStream testJs5ResponseXor
+            testJs5HandshakeRequestStream testJs5ResponseXor \
+            testJs5ArchivedMasterReferenceAudit
 
       - name: Python localhost capture proxy regression tests
         run: python3 -m unittest -v test_js5_master_capture_proxy.py
