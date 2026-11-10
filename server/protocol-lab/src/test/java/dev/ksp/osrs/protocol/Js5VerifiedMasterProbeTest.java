@@ -83,7 +83,10 @@ public final class Js5VerifiedMasterProbeTest {
         Path syntheticFixture = Files.createTempFile("js5-unsigned-master-", ".dat");
         try {
             byte[] candidate = Js5MasterIndexCandidate.build(root).container();
-            Files.write(syntheticFixture, candidate);
+            // Match the authenticated reference length to ensure this
+            // exercises the actual SHA gate, not merely the size check.
+            byte[] wrongPinned = Arrays.copyOf(candidate, 205);
+            Files.write(syntheticFixture, wrongPinned);
             boolean denied = false;
             try { Js5VerifiedMasterProbe.admit(root, syntheticFixture); }
             catch (java.io.IOException expected) { denied = true; }
