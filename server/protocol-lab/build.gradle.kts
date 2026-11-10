@@ -325,3 +325,11 @@ tasks.register<JavaExec>("testJs5HandshakeRequestStream") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.Js5HandshakeRequestStreamTest")
 }
+
+tasks.register<JavaExec>("testJs5ResponseXor") {
+    group = "verification"
+    description = "Test RSProt-242 full-frame XOR across JS5 continuation boundaries."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ResponseXorTest")
+}
