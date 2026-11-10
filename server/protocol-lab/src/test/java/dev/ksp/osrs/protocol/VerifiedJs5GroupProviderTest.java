@@ -25,6 +25,16 @@ public final class VerifiedJs5GroupProviderTest {
             byte[] reference = reference(expected);
             write(root, 255, 0, reference, 1);
             write(root, 0, 0, withSuffix, 2);
+            var master = Js5MasterIndexCandidate.build(root);
+            if (master.entries() != 1 || master.present() != 1 || master.absent() != 0)
+                throw new AssertionError("Master-index candidate entries are incorrect");
+            byte[] candidate = master.container();
+            if (candidate.length != 13 || candidate[0] != 0 || candidate[4] != 8)
+                throw new AssertionError("Invalid VERSIONED master-index container");
+            int advertisedRevision = java.nio.ByteBuffer.wrap(candidate, 9, 4).getInt();
+            if (advertisedRevision != 1)
+                throw new AssertionError("Master-index reference revision mismatch");
+
             try (var provider = new VerifiedJs5GroupProvider(root)) {
                 if (provider.availableReferenceTables() != 1)
                     throw new AssertionError("Reference table not loaded");
