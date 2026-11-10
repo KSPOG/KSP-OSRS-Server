@@ -271,3 +271,17 @@ References:
 
 If no authentic fixture exists, this gate stays **PENDING**. Passing
 synthetic tests is not proof of client compatibility.
+
+### Captured fixture inspection
+
+Before comparing, inspect the genuine captured bytes to obtain a SHA-256
+digest of the **unframed** container (the hash needed by the comparator):
+
+```powershell
+& $gradle -p $lab inspectJs5MasterWireFixture `
+    "-PmasterWirePath=C:\path\to\captured-255-255.bin" --no-daemon
+```
+
+Retain the capture provenance and its own file SHA-256 separately. The
+inspection command reports its structure but does **not** authenticate the
+capture, demonstrate that revision 242 accepts it, or validate a signature.
