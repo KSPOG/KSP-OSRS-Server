@@ -11,7 +11,8 @@
 param(
     [string]$Repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server",
     [string]$Cache = "",
-    [switch]$VerifyProvider
+    [switch]$VerifyProvider,
+    [switch]$Quick
 )
 $ErrorActionPreference = "Stop"
 $commit = "7d3c272d085854ac9b56e241e2c6cb2b376183c6"
@@ -85,10 +86,15 @@ if (-not $executable) { throw "Gradle 8.8 not found" }
 if ($LASTEXITCODE -ne 0) { throw "Synthetic verification failed" }
 & $executable -p $lab auditRevision242Metadata "-PcachePath=$Cache" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Revision-242 metadata comparison failed" }
-$arguments = @("-p", $lab, "auditAllJs5Groups", "-PcachePath=$Cache", "--no-daemon")
-if ($VerifyProvider) { $arguments += "-PverifyProvider=true" }
-& $executable @arguments
-if ($LASTEXITCODE -ne 0) { throw "Exhaustive JS5 validation failed" }
+if (-not $Quick) {
+    $arguments = @("-p", $lab, "auditAllJs5Groups", "-PcachePath=$Cache", "--no-daemon")
+    if ($VerifyProvider) { $arguments += "-PverifyProvider=true" }
+    & $executable @arguments
+    if ($LASTEXITCODE -ne 0) { throw "Exhaustive JS5 validation failed" }
+} else {
+    Write-Host "Quick mode: skipping previously validated exhaustive group scan"
+}
+
 & $executable -p $lab auditJs5OfflineExchange "-PcachePath=$Cache" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Offline RSProt-242 request exchange failed" }
 Write-Host "Offline checks passed. JS5 255/255 and client compatibility remain UNVERIFIED."
