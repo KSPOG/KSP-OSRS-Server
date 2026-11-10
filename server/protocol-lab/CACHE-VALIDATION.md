@@ -106,3 +106,20 @@ No private cache bytes are transmitted or committed.
 The existing real-cache JS5 provider smoke check passed: 159 inspected,
 159 valid preframed responses, zero unavailable or invalid.
 Authoritative revision-242 master-index compatibility is still unverified.
+
+
+## RSProt 242 JS5 remote-init decoder contract
+
+Upstream `InitJs5RemoteConnectionDecoder` in `blurite/rsprot`
+`protocol/osrs-242/osrs-242-shared` reads a 32-bit revision and four
+32-bit seed values (20 payload bytes total).
+`Js5HandshakePayload` now decodes that **payload only**, rejects incorrect
+byte lengths, allows checking revision 242, and redacts seed words in logs.
+Tests include revision rejection and defensive cloning of the seed.
+This does **not** implement an opcode, request framing, protocol negotiation,
+network transport, acknowledgement or actual game connection.
+
+Upstream RSProt `Js5Service` requires `provider.provide(255,255)` for
+its master index. Our provider still returns null for that special request.
+No production JS5 network service may be enabled until the matching master
+index format/signature and client bootstrapping are verified.
