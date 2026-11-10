@@ -23,7 +23,8 @@ MAX_CONTAINER_BYTES = 1024 * 1024
 class MasterCapture:
     """Streaming parser for FIRST server response only; no unbounded buffering."""
 
-    def __init__(self) -> None:
+    def __init__(self, expect_login_success: bool = False) -> None:
+        self.expect_login_success = expect_login_success
         self.data = bytearray()
         self.payload_remaining: int | None = None
         self.block_offset = 0
@@ -36,6 +37,12 @@ class MasterCapture:
         for octet in packet:
             if self.status != "waiting":
                 break
+            if self.expect_login_success:
+                self.expect_login_success = False
+                if octet != 0:
+                    self.status = "js5-login-not-successful"
+                    return None
+                continue
             if self.payload_remaining is None:
                 self.data.append(octet)
                 if len(self.data) == 3 and self.data != b"\xff\x00\xff":
@@ -118,7 +125,7 @@ def proxy_one_session(
     bound_port: list[int] | None = None,
 ) -> tuple[str, bool]:
     """Forward all bytes bidirectionally without transformation or logging."""
-    state = MasterCapture()
+    state = MasterCapture(expect_login_success=True)
     written = False
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
