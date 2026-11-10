@@ -15,7 +15,7 @@ param(
     [switch]$Quick
 )
 $ErrorActionPreference = "Stop"
-$commit = "0af7e8b59b36023e1c50ffc99a6e0eee55e842ba"
+$commit = "8f8826dfdd2e2f91797e8fce2582dfe872becc0e"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not (Test-Path -LiteralPath (Join-Path $lab "build.gradle.kts") -PathType Leaf)) {
     throw "Protocol-lab Gradle project missing from $lab"
@@ -44,7 +44,8 @@ $files = @(
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5MasterCandidateSocketAudit.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5HandshakeDiagnosticServer.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5HandshakeDiagnosticAudit.java",
-    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5HandshakeDiagnosticTest.java"
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5HandshakeDiagnosticTest.java",
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5HandshakeRequestStreamTest.java"
 )
 $staging = Join-Path $env:TEMP ("ksp-js5-stage-" + [guid]::NewGuid().ToString("N"))
 $backup = Join-Path $Repo ("js5-exhaustive-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
@@ -88,7 +89,7 @@ if (-not $executable) {
     }
 }
 if (-not $executable) { throw "Gradle 8.8 not found" }
-& $executable -p $lab testExhaustiveCacheAudit testJs5HandshakePayload testJs5Provider testJs5OfflineExchange testJs5MasterWireFixtureAudit testJs5HandshakeDiagnostic --no-daemon
+& $executable -p $lab testExhaustiveCacheAudit testJs5HandshakePayload testJs5Provider testJs5OfflineExchange testJs5MasterWireFixtureAudit testJs5HandshakeDiagnostic testJs5HandshakeRequestStream --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Synthetic verification failed" }
 & $executable -p $lab auditRevision242Metadata "-PcachePath=$Cache" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Revision-242 metadata comparison failed" }
