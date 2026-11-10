@@ -9,7 +9,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.file.Path;
-import java.util.Arrays;
 
 /**
  * Bounded experimental revision-242 JS5 initial connection test transport.
@@ -52,7 +51,8 @@ public final class Js5HandshakeDiagnosticServer {
 
             byte[] payload = new byte[Js5HandshakePayload.PAYLOAD_BYTES];
             try {
-                readFully(input, payload);
+                if (!readFully(input, payload))
+                    return new Report(false, 0, 0, 0, "INCOMPLETE_HANDSHAKE");
             } catch (SocketTimeoutException | EOFException ex) {
                 return new Report(false, 0, 0, 0, "INCOMPLETE_HANDSHAKE");
             }
