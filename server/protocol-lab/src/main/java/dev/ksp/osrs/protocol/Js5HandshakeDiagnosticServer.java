@@ -29,6 +29,12 @@ public final class Js5HandshakeDiagnosticServer {
                          long responseBytes, String termination) {}
 
     public static Report serveOne(ServerSocket listener, Path cache) throws IOException {
+        return serveOne(listener, cache, null);
+    }
+
+    /** Trusted master must be admitted by an independent pin check before this call. */
+    static Report serveOne(ServerSocket listener, Path cache, byte[] verifiedMaster)
+            throws IOException {
         if (!listener.getInetAddress().isLoopbackAddress())
             throw new IOException("Refusing non-loopback listener");
         listener.setSoTimeout(READ_TIMEOUT_MS);
@@ -91,10 +97,12 @@ public final class Js5HandshakeDiagnosticServer {
                     xorKey = archive;
                     continue;
                 }
-                if (archive == 255 && group == 255)
+                if (archive == 255 && group == 255 && verifiedMaster == null)
                     return new Report(true, requests, responses, bytes, "MASTER_NOT_VERIFIED");
 
-                ByteBuf response = provider.provide(archive, group);
+                ByteBuf response = archive == 255 && group == 255
+                    ? Js5WireFraming.prepare(255, 255, verifiedMaster)
+                    : provider.provide(archive, group);
                 if (response == null)
                     return new Report(true, requests, responses, bytes, "GROUP_UNAVAILABLE");
                 try {
