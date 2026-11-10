@@ -35,7 +35,7 @@ public final class Js5HandshakeDiagnosticTest {
         f.writeByte(number >>> 16); f.writeByte(number >>> 8); f.writeByte(number);
     }
 
-    private static Path fixture() throws Exception {
+    static Path fixture() throws Exception {
         Path root = Files.createTempDirectory("js5-handshake-test-");
         ByteArrayOutputStream contents = new ByteArrayOutputStream();
         try (DataOutputStream data = new DataOutputStream(contents)) {
