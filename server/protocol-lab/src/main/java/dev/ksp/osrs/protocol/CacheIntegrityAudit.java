@@ -41,6 +41,30 @@ public final class CacheIntegrityAudit {
         return new GroupCrc(matched, withTrailer, full.getValue(), without);
     }
 
+    /**
+     * A metadata-only description of the first failing group per index.
+     * Does not print raw asset bytes, filenames, or account details.
+     */
+    static String describeGroup(byte[] raw, int expectedVersion) {
+        if (raw.length < 5) return "header=too-short bytes=" + raw.length;
+        int type = raw[0] & 255;
+        long packed = ((raw[1] & 255L) << 24) | ((raw[2] & 255L) << 16)
+            | ((raw[3] & 255L) << 8) | (raw[4] & 255L);
+        long expectedContainerBytes = (type == 0 ? 5L : 9L) + packed;
+        long suffixBytes = raw.length - expectedContainerBytes;
+        int trailer = raw.length >= 2
+            ? ((raw[raw.length - 2] & 255) << 8) | (raw[raw.length - 1] & 255)
+            : -1;
+        StringBuilder result = new StringBuilder();
+        result.append("type=").append(type)
+            .append(" packed=").append(packed)
+            .append(" length=").append(raw.length)
+            .append(" suffixBytes=").append(suffixBytes)
+            .append(" trailingVersion=").append(trailer)
+            .append(" expectedVersionLow16=").append(expectedVersion & 65535);
+        return result.toString();
+    }
+
     public static void main(String[] args) throws Exception {
         if (args.length != 1) {
             System.err.println("Usage: CacheIntegrityAudit <cache-folder>");
@@ -90,7 +114,8 @@ public final class CacheIntegrityAudit {
                                     + " groupBytes=" + raw.length
                                     + " expected=" + Integer.toUnsignedString(group.crc())
                                     + " crcFull=" + result.fullCrc()
-                                    + " crcMinusTwo=" + result.withoutTrailerCrc());
+                                    + " crcMinusTwo=" + result.withoutTrailerCrc()
+                                    + " " + describeGroup(raw, group.revision()));
                         }
                     } catch (IOException | RuntimeException ex) {
                         groupReadErrors++; localReadErrors++;
