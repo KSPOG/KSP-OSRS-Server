@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.file.Path;
+import java.util.function.Consumer;
 
 /**
  * Bounded experimental revision-242 JS5 initial connection test transport.
@@ -41,6 +42,13 @@ public final class Js5HandshakeDiagnosticServer {
     /** Accept-timeout may be longer for manually started local clients. */
     static Report serveOne(ServerSocket listener, Path cache, byte[] verifiedMaster,
                            int acceptTimeoutMs) throws IOException {
+        return serveOne(listener, cache, verifiedMaster, acceptTimeoutMs, ignored -> {});
+    }
+
+    /** Emits protocol-level events only; never logs seed words or account data. */
+    static Report serveOne(ServerSocket listener, Path cache, byte[] verifiedMaster,
+                           int acceptTimeoutMs, Consumer<String> eventLog) throws IOException {
+        if (eventLog == null) throw new IllegalArgumentException("Event log must not be null");
         if (acceptTimeoutMs < 1 || acceptTimeoutMs > 180_000)
             throw new IllegalArgumentException("Invalid local accept timeout");
         if (!listener.getInetAddress().isLoopbackAddress())
@@ -78,6 +86,7 @@ public final class Js5HandshakeDiagnosticServer {
             // by a single byte 0x00 before the request stream begins.
             output.write(0);
             output.flush();
+            eventLog.accept("JS5_HANDSHAKE_ACCEPTED revision=242");
             int requests = 0, responses = 0;
             int xorKey = 0;
             long bytes = 0;
@@ -95,6 +104,8 @@ public final class Js5HandshakeDiagnosticServer {
                 int requestOpcode = message[0] & 255;
                 int archive = message[1] & 255;
                 int group = ((message[2] & 255) << 8) | (message[3] & 255);
+                eventLog.accept("JS5_REQUEST ordinal=" + requests + " opcode="
+                    + requestOpcode + " archive=" + archive + " group=" + group);
                 if (requestOpcode > 4)
                     return new Report(true, requests, responses, bytes, "UNKNOWN_REQUEST");
                 if (requestOpcode == 2 || requestOpcode == 3)
@@ -123,6 +134,8 @@ public final class Js5HandshakeDiagnosticServer {
                     output.flush();
                     responses++;
                     bytes += frame.length;
+                    eventLog.accept("JS5_RESPONSE ordinal=" + requests + " archive="
+                        + archive + " group=" + group + " bytes=" + frame.length);
                 } finally {
                     response.release();
                 }
