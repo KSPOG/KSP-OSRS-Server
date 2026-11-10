@@ -330,3 +330,36 @@ Python regression:
 `python -m unittest -v server/tools/test_js5_master_capture_proxy.py`
 (from the `server/tools` directory, run
 `python -m unittest -v test_js5_master_capture_proxy.py`).
+
+## Local diagnostic JS5 socket (NOT a real revision-242 listener)
+
+`Js5LocalDiagnosticServer` is a loopback-only, single-session,
+post-handshake diagnostic transport. It accepts only complete, fixed
+four-byte prefetch/urgent JS5 requests, serves validated group bytes,
+and closes **without a response** for missing groups, unimplemented
+control packets, or the unverified special master index `255/255`.
+It does not perform login negotiation, account authentication, client
+revision checks, XOR, asynchronous scheduling, priority queues or any
+other prerequisite to a real OSRS client session.
+
+The default test uses an ephemeral IPv4 loopback socket, sends a
+synthetic urgent request for **reference index 255/24**, checks the
+returned bytes against the local verified provider, and proves
+a subsequent request for 255/255 is rejected:
+
+```powershell
+& $gradle -p $lab auditJs5LocalDiagnostic "-PcachePath=$cache" --no-daemon
+```
+
+There is an **optional, explicit** one-session diagnostic listener for
+synthetic clients only:
+
+```powershell
+& $gradle -p $lab runJs5LocalDiagnostic "-PcachePath=$cache" "-PdiagnosticPort=43596" --no-daemon
+```
+
+Never point the master-index capture proxy at this diagnostic listener:
+it intentionally cannot serve 255/255 or an actual client handshake,
+so that would not obtain authentic capture evidence. It is useful for
+isolated socket-delivery checks, not as a substitute for a client-ready
+revision-242 JS5 server.
