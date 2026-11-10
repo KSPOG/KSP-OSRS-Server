@@ -285,3 +285,15 @@ tasks.register<JavaExec>("runJs5LocalDiagnostic") {
         args(cache, port, "--one-session")
     }
 }
+
+tasks.register<JavaExec>("auditJs5MasterCandidateSocket") {
+    group = "verification"
+    description = "Synthetic localhost-only 255/255 master candidate framing; NOT a real client compatibility check."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5MasterCandidateSocketAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
+        args(cache)
+    }
+}
