@@ -392,8 +392,8 @@ the exact RSProt-242 JS5 initialization packet: opcode 15, 20-byte fixed
 payload with revision 242 and four 32-bit seed words. It sends a successful
 single-byte `0x00` acknowledgment only on a valid revision, then processes
 bounded 4-byte JS5 requests through the verified cache provider. It handles
-priority control messages as no-ops and the zero XOR key only. Unsupported
-opcodes, nonzero XOR, missing groups and master `255/255` fail closed.
+priority control messages as no-ops and per-session XOR-change keys for framed responses. Unsupported
+opcodes, missing groups and master `255/255` fail closed.
 It stores neither credentials nor the seed. No production service or
 non-loopback listener is registered.
 
@@ -420,7 +420,7 @@ revision-242 client connection.
 
 `testJs5HandshakeRequestStream` runs socket tests against a temporary
 synthetic cache and revision-242 login acknowledgment. It checks split
-four-byte client messages, both priority controls, zero/nonzero XOR,
+four-byte client messages, both priority controls, nonzero XOR and reset-to-zero,
 prefetch reference-table delivery, missing groups, unknown opcodes,
 incomplete requests, and the explicit 32-request session cap. All
 unsupported inputs must terminate without returning fabricated data.
@@ -433,3 +433,17 @@ These tests do not enlarge the supported protocol surface: the harness
 remains a single-session diagnostic, not an authenticated production
 revision-242 JS5 service. Authenticated 255/255 delivery and actual client
 acceptance are still independent, unverified gates.
+
+### XOR wire compatibility
+
+RSProt revision-242 `XorChangeDecoder` uses only the first of the three
+payload bytes as its XOR key; the remaining two bytes are ignored. The
+`Js5GroupResponseEncoder` applies the key to **every byte** of the
+already-framed response, including the archive/group prefix and continuation
+markers. The handshake diagnostic now mirrors this behavior per connection.
+The synthetic socket tests verify nonzero key `0x5A`, ignored trailing bytes
+and a reset to key zero. This is still not a live-client acceptance test.
+
+Authoritative implementation:
+https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/js5/incoming/codec/XorChangeDecoder.kt
+https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/js5/outgoing/codec/Js5GroupResponseEncoder.kt
