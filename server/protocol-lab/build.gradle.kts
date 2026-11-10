@@ -202,3 +202,23 @@ tasks.register<JavaExec>("auditAllJs5Groups") {
         if (providers.gradleProperty("verifyProvider").orNull == "true") args("--verify-provider")
     }
 }
+
+tasks.register<JavaExec>("testJs5OfflineExchange") {
+    group = "verification"
+    description = "Synthetic RSProt revision-242 JS5 request parsing tests, no network IO."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5OfflineExchangeTest")
+}
+
+tasks.register<JavaExec>("auditJs5OfflineExchange") {
+    group = "verification"
+    description = "Replay a safe offline JS5 request sequence against an isolated cache."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5OfflineExchange")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<cache-folder>" }
+        args(cache)
+    }
+}
