@@ -11,6 +11,7 @@ repositories { mavenCentral() }
 dependencies {
     // RSProt: open-source protocol library. This is NOT RSProx.
     implementation("net.rsprot:osrs-242-api:1.0.0-ALPHA-20261106")
+    implementation("org.apache.commons:commons-compress:1.27.1")
 }
 
 java {
@@ -62,4 +63,23 @@ tasks.register<JavaExec>("testReferenceTables") {
     dependsOn(tasks.named("testClasses"))
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.CacheStructureCheckTest")
+}
+
+tasks.register<JavaExec>("auditCache") {
+    group = "verification"
+    description = "Read-only decode of JS5 reference tables and sampled group CRCs; revision remains unverified."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.CacheIntegrityAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<local-cache-folder>" }
+        args(cache)
+    }
+}
+
+tasks.register<JavaExec>("testCacheMetadata") {
+    group = "verification"
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.CacheMetadataTest")
 }
