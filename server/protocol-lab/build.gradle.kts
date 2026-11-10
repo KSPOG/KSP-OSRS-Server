@@ -161,3 +161,23 @@ tasks.register<JavaExec>("compareJs5MasterReference") {
         args(cache, reference, sha)
     }
 }
+
+tasks.register<JavaExec>("auditRevision242Metadata") {
+    group = "verification"
+    description = "Offline comparison to Jagex-sourced OpenRS2 archive 2757 reference metadata."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5Revision242MetadataAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<local-cache-folder>" }
+        args(cache)
+    }
+}
+
+tasks.register<JavaExec>("testRevision242MetadataAudit") {
+    group = "verification"
+    description = "Synthetic checks for authoritative reference completeness and mismatch reporting."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5Revision242MetadataAuditTest")
+}
