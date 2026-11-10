@@ -333,3 +333,25 @@ tasks.register<JavaExec>("testJs5ResponseXor") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.Js5ResponseXorTest")
 }
+
+tasks.register<JavaExec>("testJs5ArchivedMasterReferenceAudit") {
+    group = "verification"
+    description = "Synthetic external 255/255 fixture audit tests; rejects CRC/version deviations and extensions."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ArchivedMasterReferenceAuditTest")
+}
+
+tasks.register<JavaExec>("auditJs5ArchivedMasterReference") {
+    group = "verification"
+    description = "Compare an independently downloaded raw OpenRS2 255/255 container with the local candidate."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ArchivedMasterReferenceAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        val reference = providers.gradleProperty("archivedMasterPath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
+        require(!reference.isNullOrBlank()) { "Provide -ParchivedMasterPath=<independent-255-255.dat>" }
+        args(cache, reference)
+    }
+}
