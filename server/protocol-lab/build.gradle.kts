@@ -181,3 +181,24 @@ tasks.register<JavaExec>("testRevision242MetadataAudit") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.Js5Revision242MetadataAuditTest")
 }
+
+tasks.register<JavaExec>("testExhaustiveCacheAudit") {
+    group = "verification"
+    description = "Synthetic CRC, trailer and container failure-mode tests for the exhaustive JS5 audit."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ExhaustiveCacheAuditTest")
+}
+
+tasks.register<JavaExec>("auditAllJs5Groups") {
+    group = "verification"
+    description = "Read-only full-group CRC/trailer/container audit, optionally including every provider wire frame."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ExhaustiveCacheAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<cache-folder>" }
+        args(cache)
+        if (providers.gradleProperty("verifyProvider").orNull == "true") args("--verify-provider")
+    }
+}
