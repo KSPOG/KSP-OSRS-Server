@@ -63,7 +63,8 @@ public final class Js5VerifiedMasterProbe {
             System.out.println("one_session=true accept_timeout=180s request_timeout=7s max_requests=32");
             System.out.println("real_revision_242_client_acceptance=NOT_YET_VERIFIED");
             Js5HandshakeDiagnosticServer.Report report =
-                Js5HandshakeDiagnosticServer.serveOne(server, cache, verifiedMaster, 180_000);
+                Js5HandshakeDiagnosticServer.serveOne(server, cache, verifiedMaster, 180_000,
+                    System.out::println);
             System.out.println("JS5_CONTROLLED_PROBE_REPORT handshakeAccepted="
                 + report.handshakeAccepted() + " requests=" + report.requests()
                 + " responses=" + report.responses()
