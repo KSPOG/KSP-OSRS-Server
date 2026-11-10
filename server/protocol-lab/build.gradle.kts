@@ -246,3 +246,15 @@ tasks.register<JavaExec>("compareJs5MasterWireFixture") {
         args(cache, fixture, sha)
     }
 }
+
+tasks.register<JavaExec>("inspectJs5MasterWireFixture") {
+    group = "verification"
+    description = "Read-only report and SHA-256 pin for an externally captured JS5 255/255 response."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5MasterWireFixtureAudit")
+    doFirst {
+        val fixture = providers.gradleProperty("masterWirePath").orNull
+        require(!fixture.isNullOrBlank()) { "Provide -PmasterWirePath=<captured-255-255.bin>" }
+        args("--inspect", fixture)
+    }
+}
