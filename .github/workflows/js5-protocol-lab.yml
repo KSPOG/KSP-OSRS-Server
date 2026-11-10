@@ -36,4 +36,5 @@ jobs:
             testCacheReader testReferenceTables testCacheMetadata \
             testCacheIntegrity testJs5Provider testJs5WireFraming \
             testJs5HandshakePayload testJs5MasterReferenceComparator \
-            testRevision242MetadataAudit testExhaustiveCacheAudit
+            testRevision242MetadataAudit testExhaustiveCacheAudit \
+            testJs5OfflineExchange
