@@ -1,7 +1,6 @@
 package dev.ksp.osrs.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,7 +12,7 @@ import net.rsprot.protocol.api.js5.Js5GroupProvider;
  * A read-only, fail-closed candidate provider for RSProt's JS5 API.
  *
  * Validates each group against its decoded local reference table before returning
- * the exact compressed cache-container bytes, WITHOUT the on-disk revision suffix.
+ * RSProt-compatible framed group responses, WITHOUT the on-disk revision suffix.
  * This class is not registered with a live network service.
  *
  * Does not synthesize the special JS5 master index (255/255).
@@ -47,12 +46,13 @@ public final class VerifiedJs5GroupProvider implements Js5GroupProvider, AutoClo
     }
 
     /**
-     * Returns a fresh independent ByteBuf per call, or null on missing / invalid
-     * groups. ByteBuf ownership transfers to the RSProt caller.
+     * Returns a fresh, already JS5-framed ByteBuf per call, or null on invalid
+     * groups. Response begins with archive/group bytes and uses 0xFF markers.
+     * ByteBuf ownership transfers to the RSProt caller.
      */
     @Override public synchronized ByteBuf provide(int archive, int group) {
         if (closed) throw new IllegalStateException("JS5 provider closed");
-        if (archive < 0 || archive > 255 || group < 0) return null;
+        if (archive < 0 || archive > 255 || group < 0 || group > 65535) return null;
         if (archive == 255 && group == 255) return null;
         try {
             byte[] raw;
@@ -64,7 +64,7 @@ public final class VerifiedJs5GroupProvider implements Js5GroupProvider, AutoClo
                 // CRC in the child reference table, so validate framing.
                 var info = CacheStructureCheck.validateContainer(raw);
                 if (raw.length != info.crcLength()) return null;
-                return Unpooled.wrappedBuffer(raw);
+                return Js5WireFraming.prepare(archive, group, raw);
             }
             CacheMetadata.Reference index = references.get(archive);
             if (index == null) return null;
@@ -81,7 +81,7 @@ public final class VerifiedJs5GroupProvider implements Js5GroupProvider, AutoClo
             byte[] container = java.util.Arrays.copyOf(raw, raw.length - suffix);
             var info = CacheStructureCheck.validateContainer(container);
             if (container.length != info.crcLength()) return null;
-            return Unpooled.wrappedBuffer(container);
+            return Js5WireFraming.prepare(archive, group, container);
         } catch (IOException | IllegalArgumentException ex) {
             return null;
         }
