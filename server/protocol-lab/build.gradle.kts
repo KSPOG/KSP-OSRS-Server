@@ -383,3 +383,17 @@ tasks.register<JavaExec>("runJs5VerifiedMasterProbe") {
         args(cache, archivedMaster, port, "--confirm-local-probe")
     }
 }
+
+tasks.register<JavaExec>("auditJs5VerifiedMasterProbe") {
+    group = "verification"
+    description = "Real-cache pinned master 255/255 + handshake + XOR reference via ephemeral loopback."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5VerifiedMasterProbeAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        val archivedMaster = providers.gradleProperty("archivedMasterPath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
+        require(!archivedMaster.isNullOrBlank()) { "Provide -ParchivedMasterPath=<pinned-external-master.dat>" }
+        args(cache, archivedMaster)
+    }
+}
