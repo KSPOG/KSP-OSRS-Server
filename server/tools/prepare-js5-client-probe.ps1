@@ -16,7 +16,7 @@ param(
     [switch]$Listen
 )
 $ErrorActionPreference = "Stop"
-$commit = "18569ffc9f657194bfea742d4d22590e2fa34ed7"
+$commit = "1ac4091ee1564268d0d138d7c9af810de77b22be"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not $Cache) {
     $Cache = Join-Path $Repo "server\cache-validation\openrs2-2757\extracted\cache"
