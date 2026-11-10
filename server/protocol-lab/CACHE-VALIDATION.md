@@ -48,3 +48,24 @@ $repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server"
 ```
 
 This verifies local CRC consistency, not authoritative revision-242 cache compatibility.
+
+
+## RSProt JS5 group provider prototype
+
+`VerifiedJs5GroupProvider` implements `net.rsprot.protocol.api.js5.Js5GroupProvider`
+as a **read-only prototype**; no network listener or live game-world connection
+is wired to it. On initialization it decodes stored reference indexes (idx255).
+Each requested normal group is read from disk and its raw CRC32 verified
+against reference-table metadata before a fresh Netty ByteBuf is returned.
+On-disk suffix bytes are removed before returning compressed JS5 container bytes.
+Missing/invalid/CRC-mismatched groups return null. The special master index
+`archive=255, group=255` is deliberately unsupported until implemented and tested.
+
+Run synthetic provider tests with Gradle task `testJs5Provider`.
+Verified local sample: 311 out of 311 groups matched their own stored reference
+CRCs when excluding four trailing bytes. **This does not certify revision 242**
+or the completeness of the cache. No cache bytes are included in the repository.
+
+Remaining: validate actual provider against the local cache, construct
+and certify the JS5 master index, implement handshake and network framing,
+and enable server readiness only after protocol/asset compatibility testing.
