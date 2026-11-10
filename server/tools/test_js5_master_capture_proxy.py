@@ -41,6 +41,18 @@ class MasterCaptureTest(unittest.TestCase):
         self.assertEqual("captured", parser.status)
         self.assertEqual(2, parser.markers)
 
+    def test_login_success_ack_then_fragmented_master(self):
+        wire = framed_master(bytes(range(10)))
+        parser = MasterCapture(expect_login_success=True)
+        self.assertIsNone(parser.feed(b"\\x00"))
+        self.assertEqual(wire, parser.feed(wire))
+        self.assertEqual("captured", parser.status)
+
+    def test_login_failure_rejected(self):
+        parser = MasterCapture(expect_login_success=True)
+        self.assertIsNone(parser.feed(b"\\x06"))
+        self.assertEqual("js5-login-not-successful", parser.status)
+
     def test_non_master_is_not_captured(self):
         parser = MasterCapture()
         self.assertIsNone(parser.feed(b"\x00\x00\x01"))
@@ -74,6 +86,7 @@ class LocalForwardingTest(unittest.TestCase):
                 def fake_upstream():
                     with upstream.accept()[0] as conn:
                         upstream_received.append(conn.recv(65536))
+                        conn.sendall(b"\\x00")  # RSProt successful JS5 login reply
                         for start in range(0, len(wire), 11):
                             conn.sendall(wire[start:start+11])
                         conn.shutdown(socket.SHUT_WR)
@@ -105,7 +118,7 @@ class LocalForwardingTest(unittest.TestCase):
                 self.assertFalse(relay.is_alive())
                 self.assertFalse(origin.is_alive())
                 self.assertEqual(user_data, upstream_received[0])
-                self.assertEqual(wire, bytes(forwarded))
+                self.assertEqual(b"\\x00" + wire, bytes(forwarded))
                 self.assertEqual(wire, file.read_bytes())
                 self.assertEqual([("captured", True)], result)
                 meta = json.loads((Path(str(file) + ".provenance.json")).read_text())
