@@ -12,7 +12,8 @@ public final class Js5WireFramingTest {
         for (int length : new int[]{5, 508, 509, 510, 511, 512, 1019, 1020, 1021, 4096}) {
             byte[] raw = new byte[length];
             for (int i = 0; i < raw.length; i++) raw[i] = (byte)(i * 31);
-            try (ByteBuf response = Js5WireFraming.prepare(255, 250, raw)) {
+            ByteBuf response = Js5WireFraming.prepare(255, 250, raw);
+            try {
                 if (response.readUnsignedByte() != 255 || response.readUnsignedShort() != 250)
                     throw new AssertionError("Incorrect JS5 prefix");
                 byte[] unpacked = new byte[length];
@@ -26,7 +27,7 @@ public final class Js5WireFramingTest {
                 }
                 if (response.isReadable() || !Arrays.equals(raw, unpacked))
                     throw new AssertionError("JS5 boundary error at " + length);
-            }
+            } finally { response.release(); }
         }
         expectBad(-1, 0);
         expectBad(256, 0);
@@ -36,8 +37,11 @@ public final class Js5WireFramingTest {
     }
 
     private static void expectBad(int archive, int group) throws Exception {
-        try (ByteBuf ignored = Js5WireFraming.prepare(archive, group, new byte[5])) {
+        ByteBuf unexpected = null;
+        try {
+            unexpected = Js5WireFraming.prepare(archive, group, new byte[5]);
             throw new AssertionError("Invalid JS5 request accepted");
         } catch (IOException expected) { /* fail closed */ }
+        finally { if (unexpected != null) unexpected.release(); }
     }
 }
