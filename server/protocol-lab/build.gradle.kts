@@ -55,3 +55,11 @@ tasks.register<JavaExec>("testCacheReader") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.IndexedCacheReaderTest")
 }
+
+tasks.register<JavaExec>("testReferenceTables") {
+    group = "verification"
+    description = "Validate reference table container parsing and safe failure."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.CacheStructureCheckTest")
+}
