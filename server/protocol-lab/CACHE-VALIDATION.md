@@ -363,3 +363,24 @@ it intentionally cannot serve 255/255 or an actual client handshake,
 so that would not obtain authentic capture evidence. It is useful for
 isolated socket-delivery checks, not as a substitute for a client-ready
 revision-242 JS5 server.
+
+## Synthetic 255/255 master-index socket audit
+
+The JS5 diagnostic server now exposes a **package-private test-only** override
+that can frame the locally generated classic VERSIONED master-index candidate
+in a localhost loopback socket test. The normal diagnostic server continues
+to **reject all 255/255 requests**. No flag in its public command-line
+interface enables candidate serving.
+
+`Js5MasterCandidateSocketAudit` requests 255/255 from the test-only
+loopback instance, checks that every transmitted byte matches the expected
+framed candidate, decodes it back into the same candidate container, and
+prints its SHA-256 fingerprint. It does not authenticate a captured fixture,
+verify client signature requirements, or test a real revision-242 client.
+
+```powershell
+& $gradle -p $lab auditJs5MasterCandidateSocket "-PcachePath=$cache" --no-daemon
+```
+
+Independent source for cache format, count and archive-level CRC/revisions:
+https://archive.openrs2.org/caches/runescape/2757
