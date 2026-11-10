@@ -15,7 +15,7 @@ param(
     [switch]$Quick
 )
 $ErrorActionPreference = "Stop"
-$commit = "8b6e6b2cc046efb18b981a34bd4382cccd5cdc67"
+$commit = "39de74fe2fec53126d812489d66e58a033316c23"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not (Test-Path -LiteralPath (Join-Path $lab "build.gradle.kts") -PathType Leaf)) {
     throw "Protocol-lab Gradle project missing from $lab"
@@ -40,7 +40,8 @@ $files = @(
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5MasterWireFixtureAudit.java",
     "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5MasterWireFixtureAuditTest.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5LocalDiagnosticServer.java",
-    "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5LocalDiagnosticAudit.java"
+    "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5LocalDiagnosticAudit.java",
+    "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5MasterCandidateSocketAudit.java"
 )
 $staging = Join-Path $env:TEMP ("ksp-js5-stage-" + [guid]::NewGuid().ToString("N"))
 $backup = Join-Path $Repo ("js5-exhaustive-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
@@ -101,4 +102,6 @@ if (-not $Quick) {
 if ($LASTEXITCODE -ne 0) { throw "Offline RSProt-242 request exchange failed" }
 & $executable -p $lab auditJs5LocalDiagnostic "-PcachePath=$Cache" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Local JS5 socket diagnostic failed" }
-Write-Host "Offline checks and localhost socket diagnostic passed. JS5 255/255 and real client compatibility remain UNVERIFIED."
+& $executable -p $lab auditJs5MasterCandidateSocket "-PcachePath=$Cache" --no-daemon
+if ($LASTEXITCODE -ne 0) { throw "Synthetic JS5 255/255 socket audit failed" }
+Write-Host "Offline checks and synthetic socket audits passed. Authentic JS5 255/255 and real client compatibility remain UNVERIFIED."
