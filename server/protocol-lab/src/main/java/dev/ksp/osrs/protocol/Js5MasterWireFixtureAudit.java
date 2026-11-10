@@ -84,16 +84,32 @@ public final class Js5MasterWireFixtureAudit {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 3) {
-            System.err.println("Usage: Js5MasterWireFixtureAudit <cache> <captured-wire-response> <container-sha256>");
+        if (args.length != 3 && !(args.length == 2 && "--inspect".equals(args[0]))) {
+            System.err.println("Usage: Js5MasterWireFixtureAudit --inspect <captured-wire-response>");
+            System.err.println("   or: Js5MasterWireFixtureAudit <cache> <captured-wire-response> <container-sha256>");
             System.exit(2);
         }
         Path fixture = Path.of(args[1]);
+        if (!Files.isRegularFile(fixture) || Files.isSymbolicLink(fixture)
+            || Files.size(fixture) < 8 || Files.size(fixture) > MAX_WIRE_BYTES)
+            throw new IOException("Wire fixture missing, oversized or symlinked");
         Decoded d = decode(Files.readAllBytes(fixture));
         System.out.println("Captured JS5 255/255: wireBytes=" + Files.size(fixture)
             + " containerBytes=" + d.container().length + " compression=" + d.compressionType()
             + " continuationMarkers=" + d.continuationMarkers()
             + " extraBytes=" + d.extraBytes());
+        if (args.length == 2) {
+            try {
+                String digest = java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(d.container()));
+                System.out.println("Unframed container SHA-256: " + digest);
+            } catch (java.security.NoSuchAlgorithmException error) {
+                throw new IllegalStateException("SHA-256 unavailable", error);
+            }
+            System.out.println("Capture authenticity / revision: NOT DETERMINED");
+            System.out.println("Client signature and acceptance: UNVERIFIED");
+            return;
+        }
         var result = compare(Path.of(args[0]), fixture, args[2]);
         System.out.println("Pinned SHA-256: " + result.referenceSha256());
         System.out.println("Byte-exact candidate comparison: " + (result.exactMatch() ? "MATCH" : "MISMATCH")
