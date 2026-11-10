@@ -355,3 +355,31 @@ tasks.register<JavaExec>("auditJs5ArchivedMasterReference") {
         args(cache, reference)
     }
 }
+
+tasks.register<JavaExec>("testJs5VerifiedMasterProbe") {
+    group = "verification"
+    description = "Synthetic localhost master admission rejection and handshake/master/group transport tests."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5VerifiedMasterProbeTest")
+}
+
+tasks.register<JavaExec>("runJs5VerifiedMasterProbe") {
+    group = "verification"
+    description = "Explicit one-session localhost JS5 probe with pinned independent cache-2757 master, NOT a game server."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5VerifiedMasterProbe")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        val archivedMaster = providers.gradleProperty("archivedMasterPath").orNull
+        val port = providers.gradleProperty("probePort").orNull ?: "43596"
+        val parsedPort = port.toIntOrNull()
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
+        require(!archivedMaster.isNullOrBlank()) { "Provide -ParchivedMasterPath=<pinned-external-master.dat>" }
+        require(parsedPort != null && parsedPort in 1..65535) { "Probe port must be 1..65535" }
+        require(providers.gradleProperty("confirmLocalProbe").orNull == "true") {
+            "Provide -PconfirmLocalProbe=true to explicitly enable localhost probe"
+        }
+        args(cache, archivedMaster, port, "--confirm-local-probe")
+    }
+}
