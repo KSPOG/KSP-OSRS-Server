@@ -7,6 +7,8 @@ on:
   pull_request:
     paths:
       - 'server/protocol-lab/**'
+      - 'server/tools/js5_master_capture_proxy.py'
+      - 'server/tools/test_js5_master_capture_proxy.py'
       - '.github/workflows/js5-protocol-lab.yml'
 
 permissions:
@@ -38,3 +40,7 @@ jobs:
             testJs5HandshakePayload testJs5MasterReferenceComparator \
             testRevision242MetadataAudit testExhaustiveCacheAudit \
             testJs5OfflineExchange testJs5MasterWireFixtureAudit
+
+      - name: Python localhost capture proxy regression tests
+        run: python3 -m unittest -v test_js5_master_capture_proxy.py
+        working-directory: server/tools
