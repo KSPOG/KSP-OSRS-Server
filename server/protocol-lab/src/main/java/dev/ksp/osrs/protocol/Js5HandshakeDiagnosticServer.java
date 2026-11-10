@@ -35,9 +35,17 @@ public final class Js5HandshakeDiagnosticServer {
     /** Trusted master must be admitted by an independent pin check before this call. */
     static Report serveOne(ServerSocket listener, Path cache, byte[] verifiedMaster)
             throws IOException {
+        return serveOne(listener, cache, verifiedMaster, READ_TIMEOUT_MS);
+    }
+
+    /** Accept-timeout may be longer for manually started local clients. */
+    static Report serveOne(ServerSocket listener, Path cache, byte[] verifiedMaster,
+                           int acceptTimeoutMs) throws IOException {
+        if (acceptTimeoutMs < 1 || acceptTimeoutMs > 180_000)
+            throw new IllegalArgumentException("Invalid local accept timeout");
         if (!listener.getInetAddress().isLoopbackAddress())
             throw new IOException("Refusing non-loopback listener");
-        listener.setSoTimeout(READ_TIMEOUT_MS);
+        listener.setSoTimeout(acceptTimeoutMs);
         try (var provider = new VerifiedJs5GroupProvider(cache);
              Socket client = listener.accept()) {
             if (!client.getInetAddress().isLoopbackAddress())
