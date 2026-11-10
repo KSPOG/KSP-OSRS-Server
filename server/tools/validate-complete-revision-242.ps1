@@ -3,7 +3,7 @@
 .SYNOPSIS
  Install and verify the offline revision-242 JS5 exhaustive audit, without Git.
 .DESCRIPTION
- Downloads only the pinned source/test/Gradle files into an existing checkout,
+ Downloads pinned sources including required handshake tests into an existing checkout,
  backs up any replaced files, then runs synthetic tests and read-only full-cache
  audits against an isolated, user-specified cache. Does not start listeners.
 #>
@@ -29,7 +29,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $Cache "main_file_cache.idx255") -Pa
 $files = @(
     "server/protocol-lab/build.gradle.kts",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5ExhaustiveCacheAudit.java",
-    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5ExhaustiveCacheAuditTest.java"
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5ExhaustiveCacheAuditTest.java",
+    "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5HandshakePayload.java",
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5HandshakePayloadTest.java"
 )
 $staging = Join-Path $env:TEMP ("ksp-js5-stage-" + [guid]::NewGuid().ToString("N"))
 $backup = Join-Path $Repo ("js5-exhaustive-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
