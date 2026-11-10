@@ -14,31 +14,34 @@ public final class CacheIntegrityAudit {
     private static final int MAX_SAMPLES_PER_INDEX = 16;
     private CacheIntegrityAudit() {}
 
-    public record GroupCrc(boolean matched, boolean hasVersionTrailer, long fullCrc,
-        long withoutTrailerCrc) {}
+    public record GroupCrc(boolean matched, int excludedSuffixBytes, long fullCrc,
+        long withoutTrailerCrc, long withoutFourCrc) {}
 
     /**
-     * The RuneLite cache format stores a two-byte group revision trailer in many
-     * archive groups. CRC32 is computed over the group container excluding that
-     * trailer. Some local groups omit it. The reference table CRC is authoritative
-     * for deciding which representation matches.
-     *
-     * Encryption may hide a decompression header, but cannot invalidate this
-     * CRC comparison: CRC32 checks the on-disk container bytes directly.
+     * Audit the stored bytes against a reference-table CRC. The user's current
+     * cache contains a four-byte suffix on sampled groups. Check exact container
+     * length first, then 2- and 4-byte suffix representations. A CRC match does
+     * not certify a particular game revision.
      */
     public static GroupCrc compareGroupCrc(byte[] raw, int expectedCrc) {
-        CRC32 full = new CRC32();
-        full.update(raw);
-        long without = -1;
-        if (raw.length >= 2) {
-            CRC32 truncated = new CRC32();
-            truncated.update(raw, 0, raw.length - 2);
-            without = truncated.getValue();
-        }
         long wanted = Integer.toUnsignedLong(expectedCrc);
-        boolean withTrailer = without == wanted;
-        boolean matched = withTrailer || full.getValue() == wanted;
-        return new GroupCrc(matched, withTrailer, full.getValue(), without);
+        CRC32 crc = new CRC32();
+        crc.update(raw);
+        long full = crc.getValue();
+        long minusTwo = -1L, minusFour = -1L;
+        if (raw.length >= 2) {
+            crc.reset();
+            crc.update(raw, 0, raw.length - 2);
+            minusTwo = crc.getValue();
+        }
+        if (raw.length >= 4) {
+            crc.reset();
+            crc.update(raw, 0, raw.length - 4);
+            minusFour = crc.getValue();
+        }
+        int suffix = full == wanted ? 0
+            : minusTwo == wanted ? 2 : minusFour == wanted ? 4 : -1;
+        return new GroupCrc(suffix >= 0, suffix, full, minusTwo, minusFour);
     }
 
     /**
@@ -77,7 +80,7 @@ public final class CacheIntegrityAudit {
         int slots = (int)(size / 6);
         int decoded = 0, absent = 0, referenceInvalid = 0;
         int matching = 0, missing = 0, mismatch = 0, groupReadErrors = 0;
-        int withTrailer = 0, withoutTrailer = 0;
+        int crcFull = 0, crcMinusTwo = 0, crcMinusFour = 0;
         long defined = 0;
         try (var reader = new IndexedCacheReader(root)) {
             for (int archive = 0; archive < slots; archive++) {
@@ -104,8 +107,12 @@ public final class CacheIntegrityAudit {
                         GroupCrc result = compareGroupCrc(raw, group.crc());
                         if (result.matched()) {
                             matching++; localMatching++;
-                            if (result.hasVersionTrailer()) withTrailer++;
-                            else withoutTrailer++;
+                            switch (result.excludedSuffixBytes()) {
+                                case 0 -> crcFull++;
+                                case 2 -> crcMinusTwo++;
+                                case 4 -> crcMinusFour++;
+                                default -> throw new IllegalStateException("Unexpected CRC framing");
+                            }
                         } else {
                             mismatch++; localMismatch++;
                             if (localMismatch <= 2)
@@ -115,6 +122,7 @@ public final class CacheIntegrityAudit {
                                     + " expected=" + Integer.toUnsignedString(group.crc())
                                     + " crcFull=" + result.fullCrc()
                                     + " crcMinusTwo=" + result.withoutTrailerCrc()
+                                    + " crcMinusFour=" + result.withoutFourCrc()
                                     + " " + describeGroup(raw, group.revision()));
                         }
                     } catch (IOException | RuntimeException ex) {
@@ -138,8 +146,8 @@ public final class CacheIntegrityAudit {
         System.out.println("Sampled group CRCs: matching=" + matching
             + ", missing=" + missing + ", mismatched=" + mismatch
             + ", readErrors=" + groupReadErrors);
-        System.out.println("CRC match framing: withoutVersionTrailer=" + withTrailer
-            + ", withFullContainer=" + withoutTrailer);
+        System.out.println("CRC match framing: full=" + crcFull
+            + ", minusTwo=" + crcMinusTwo + ", minusFour=" + crcMinusFour);
         System.out.println("OSRS revision 242 cache certification: NOT ESTABLISHED");
         if (referenceInvalid != 0 || mismatch != 0 || groupReadErrors != 0)
             System.exit(3);
