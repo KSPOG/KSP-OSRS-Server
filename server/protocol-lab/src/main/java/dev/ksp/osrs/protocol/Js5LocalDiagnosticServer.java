@@ -30,6 +30,12 @@ public final class Js5LocalDiagnosticServer {
                          String termination) {}
 
     public static Report serveOne(ServerSocket listener, Path cache) throws IOException {
+        return serveOne(listener, cache, false);
+    }
+
+    /** Only for offline loopback tests; does not authenticate the master-index candidate. */
+    static Report serveOne(ServerSocket listener, Path cache, boolean unsignedTestMaster)
+            throws IOException {
         if (!listener.getInetAddress().isLoopbackAddress())
             throw new IOException("JS5 diagnostic listener must bind loopback only");
         listener.setSoTimeout(TIMEOUT_MS);
@@ -58,9 +64,11 @@ public final class Js5LocalDiagnosticServer {
                 int group = (request[2] & 255) << 8 | request[3] & 255;
                 if (opcode != 0 && opcode != 1)
                     return new Report(requests, responses, bytes, "CONTROL_UNSUPPORTED");
-                if (archive == 255 && group == 255)
+                if (archive == 255 && group == 255 && !unsignedTestMaster)
                     return new Report(requests, responses, bytes, "MASTER_NOT_VERIFIED");
-                ByteBuf response = provider.provide(archive, group);
+                ByteBuf response = archive == 255 && group == 255
+                    ? Js5WireFraming.prepare(255, 255, Js5MasterIndexCandidate.build(cache).container())
+                    : provider.provide(archive, group);
                 if (response == null)
                     return new Report(requests, responses, bytes, "GROUP_UNAVAILABLE");
                 try {
