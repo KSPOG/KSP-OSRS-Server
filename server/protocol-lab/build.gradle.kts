@@ -222,3 +222,27 @@ tasks.register<JavaExec>("auditJs5OfflineExchange") {
         args(cache)
     }
 }
+
+tasks.register<JavaExec>("testJs5MasterWireFixtureAudit") {
+    group = "verification"
+    description = "Synthetic captured 255/255 JS5 wire decode and SHA-256 fixture tests."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5MasterWireFixtureAuditTest")
+}
+
+tasks.register<JavaExec>("compareJs5MasterWireFixture") {
+    group = "verification"
+    description = "Compare a previously captured 255/255 on-wire response with the local VERSIONED candidate."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5MasterWireFixtureAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        val fixture = providers.gradleProperty("masterWirePath").orNull
+        val sha = providers.gradleProperty("masterContainerSha256").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<cache-folder>" }
+        require(!fixture.isNullOrBlank()) { "Provide -PmasterWirePath=<captured-255-255.bin>" }
+        require(!sha.isNullOrBlank()) { "Provide -PmasterContainerSha256=<64 hex chars>" }
+        args(cache, fixture, sha)
+    }
+}
