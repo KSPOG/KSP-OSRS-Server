@@ -38,7 +38,7 @@ class MasterCapture:
                 break
             if self.payload_remaining is None:
                 self.data.append(octet)
-                if len(self.data) == 3 and self.data != b"\\xff\\x00\\xff":
+                if len(self.data) == 3 and self.data != b"\xff\x00\xff":
                     self.status = "first-response-not-master"
                     self.data.clear()
                     return None
