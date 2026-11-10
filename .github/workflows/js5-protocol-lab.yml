@@ -37,4 +37,4 @@ jobs:
             testCacheIntegrity testJs5Provider testJs5WireFraming \
             testJs5HandshakePayload testJs5MasterReferenceComparator \
             testRevision242MetadataAudit testExhaustiveCacheAudit \
-            testJs5OfflineExchange
+            testJs5OfflineExchange testJs5MasterWireFixtureAudit
