@@ -317,3 +317,11 @@ tasks.register<JavaExec>("testJs5HandshakeDiagnostic") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.Js5HandshakeDiagnosticTest")
 }
+
+tasks.register<JavaExec>("testJs5HandshakeRequestStream") {
+    group = "verification"
+    description = "Synthetic socket tests for fragmented JS5 requests and fail-closed controls."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5HandshakeRequestStreamTest")
+}
