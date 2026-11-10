@@ -38,7 +38,7 @@ public final class Js5WireFraming {
             if (output.readableBytes() != (int)totalSize)
                 throw new IllegalStateException("Unexpected JS5 response byte count");
             return output;
-        } catch (Throwable error) {
+        } catch (RuntimeException | Error error) {
             output.release();
             throw error;
         }
