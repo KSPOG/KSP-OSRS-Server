@@ -102,10 +102,7 @@ public final class Js5HandshakeDiagnosticServer {
                     response.readBytes(frame);
                     // RSProt-242 Js5GroupResponseEncoder XORs the entire
                     // outgoing framed payload, including archive/group header.
-                    if (xorKey != 0) {
-                        for (int i = 0; i < frame.length; i++)
-                            frame[i] = (byte) (frame[i] ^ xorKey);
-                    }
+                    Js5ResponseXor.apply(frame, xorKey);
                     output.write(frame);
                     output.flush();
                     responses++;
