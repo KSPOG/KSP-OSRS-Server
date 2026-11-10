@@ -79,8 +79,22 @@ public final class Js5HandshakeRequestStreamTest {
             var unknown = run(root, new byte[] {99, 0, 0, 0}, "UNKNOWN_REQUEST", null);
             check(unknown.requests() == 1 && unknown.responses() == 0, "unknown opcode accepted");
 
-            var xor = run(root, new byte[] {4, 1, 0, 0}, "XOR_UNSUPPORTED", null);
-            check(xor.requests() == 1 && xor.responses() == 0, "nonzero XOR accepted");
+            byte[] encrypted = reference.clone();
+            for (int i = 0; i < encrypted.length; i++)
+                encrypted[i] = (byte)(encrypted[i] ^ 0x5a);
+            var xor = run(root, new byte[] {
+                4, 0x5a, 0x12, 0x34, // key=0x5A; trailing bytes ignored by RSProt
+                1, (byte)255, 0, 0  // urgent reference fetch
+            }, "CLIENT_CLOSED", encrypted);
+            check(xor.requests() == 2 && xor.responses() == 1
+                && xor.responseBytes() == reference.length, "nonzero XOR response incorrect");
+            var xorReset = run(root, new byte[] {
+                4, 0x5a, 0, 0,
+                4, 0, (byte)255, (byte)255, // reset to zero; ignored trailing bytes
+                1, (byte)255, 0, 0
+            }, "CLIENT_CLOSED", reference);
+            check(xorReset.requests() == 3 && xorReset.responses() == 1,
+                "XOR reset did not restore unencrypted responses");
 
             var missing = run(root, new byte[] {1, 0, 0, 0}, "GROUP_UNAVAILABLE", null);
             check(missing.requests() == 1 && missing.responses() == 0, "unavailable group accepted");
