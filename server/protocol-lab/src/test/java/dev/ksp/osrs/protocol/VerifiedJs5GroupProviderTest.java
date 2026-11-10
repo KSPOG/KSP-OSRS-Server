@@ -31,17 +31,22 @@ public final class VerifiedJs5GroupProviderTest {
                 ByteBuf group = provider.provide(0, 0);
                 if (group == null) throw new AssertionError("Valid group missing");
                 try {
+                    if (group.readUnsignedByte() != 0 || group.readUnsignedShort() != 0)
+                        throw new AssertionError("Missing JS5 archive/group prefix");
                     if (group.readableBytes() != payload.length)
                         throw new AssertionError("Incorrect suffix removal");
                     byte[] actual = new byte[group.readableBytes()];
                     group.readBytes(actual);
                     if (!java.util.Arrays.equals(actual, payload))
-                        throw new AssertionError("Raw JS5 group was changed");
+                        throw new AssertionError("JS5 group payload was changed");
                 } finally { group.release(); }
 
                 ByteBuf index = provider.provide(255, 0);
                 if (index == null) throw new AssertionError("Reference group missing");
-                index.release();
+                try {
+                    if (index.readUnsignedByte() != 255 || index.readUnsignedShort() != 0)
+                        throw new AssertionError("Incorrect reference-index response prefix");
+                } finally { index.release(); }
                 if (provider.provide(255, 255) != null
                     || provider.provide(0, 1) != null
                     || provider.provide(1, 0) != null)
