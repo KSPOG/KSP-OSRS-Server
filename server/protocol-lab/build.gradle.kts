@@ -35,3 +35,23 @@ tasks.register("verifyProtocolDependencies") {
 application {
     mainClass.set("dev.ksp.osrs.protocol.ProtocolApiCheck")
 }
+
+tasks.register<JavaExec>("inspectCache") {
+    group = "verification"
+    description = "Validate the local JS5 master index sector chain without copying assets."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.CacheStructureCheck")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<local-cache-folder>" }
+        args(cache)
+    }
+}
+
+tasks.register<JavaExec>("testCacheReader") {
+    group = "verification"
+    description = "Test standard/extended cache sectors and corruption handling."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.IndexedCacheReaderTest")
+}
