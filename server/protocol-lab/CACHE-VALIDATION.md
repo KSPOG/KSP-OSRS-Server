@@ -447,3 +447,34 @@ and a reset to key zero. This is still not a live-client acceptance test.
 Authoritative implementation:
 https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/js5/incoming/codec/XorChangeDecoder.kt
 https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/js5/outgoing/codec/Js5GroupResponseEncoder.kt
+
+## Independent master-index archive retrieval (revision 242)
+
+RSProx's source confirms that OpenRS2's archive API supports downloading the
+master-index container as group `255/255`, separate from any local candidate:
+`https://archive.openrs2.org/caches/runescape/2757/archives/255/groups/255.dat`.
+The OpenRS2 archive identifies cache `2757` as oldschool/live/en build `242`
+dated 2026-11-03. This is the documented **raw JS5 container** endpoint;
+do **not** feed it to the existing network-wire decoder, which expects a
+three-byte archive/group prefix.
+
+To retrieve and compare it on Windows PowerShell 5.1 without using Git,
+run `server/tools/verify-openrs2-master-255-255.ps1`. The script downloads
+no more than 1 MiB, preserves prior fixture data, prints a SHA-256,
+downloads the minimum new source set with backups, runs the new synthetic
+regression and compares actual bytes against the locally derived candidate.
+If the endpoint returns an error, the script stops without fabricating data.
+If bytes differ or include an unrecognized extension, the audit exits
+nonzero and **preserves the external fixture** for investigation.
+
+A byte-for-byte match would verify the candidate against this independently
+archived container. It **would not** establish that the official
+revision-242 client accepts the content or prove its signature trust chain.
+The OpenRS2 endpoint's availability for this particular cache has not
+yet been independently confirmed in the lab environment.
+
+References:
+- https://archive.openrs2.org/api
+- https://archive.openrs2.org/caches/runescape/2757
+- https://github.com/blurite/rsprox/blob/master/cache/src/main/kotlin/net/rsprox/cache/util/OpenRs2ApiExtensions.kt
+- https://github.com/blurite/rsprox/blob/master/cache/src/main/kotlin/net/rsprox/cache/identifier/OpenRs2CacheIdentifier.kt
