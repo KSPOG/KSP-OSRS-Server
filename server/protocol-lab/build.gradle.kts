@@ -98,3 +98,22 @@ tasks.register<JavaExec>("testJs5Provider") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.VerifiedJs5GroupProviderTest")
 }
+
+tasks.register<JavaExec>("testJs5WireFraming") {
+    group = "verification"
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5WireFramingTest")
+}
+
+tasks.register<JavaExec>("auditJs5Provider") {
+    group = "verification"
+    description = "Read-only sample of actual cache groups via RSProt framed provider."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ProviderAudit")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<local-cache-folder>" }
+        args(cache)
+    }
+}
