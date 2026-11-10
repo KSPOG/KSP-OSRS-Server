@@ -14,7 +14,7 @@ param(
     [switch]$VerifyProvider
 )
 $ErrorActionPreference = "Stop"
-$commit = "8ece9519e891e9368a9954d775ff5cc9c32e11cd"
+$commit = "8bc3ebff466bcb3a9762b76bfb5c86d7fba58086"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not (Test-Path -LiteralPath (Join-Path $lab "build.gradle.kts") -PathType Leaf)) {
     throw "Protocol-lab Gradle project missing from $lab"
@@ -35,7 +35,9 @@ $files = @(
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5OfflineExchange.java",
     "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5OfflineExchangeTest.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/VerifiedJs5GroupProvider.java",
-    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/VerifiedJs5GroupProviderTest.java"
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/VerifiedJs5GroupProviderTest.java",
+    "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5MasterWireFixtureAudit.java",
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5MasterWireFixtureAuditTest.java"
 )
 $staging = Join-Path $env:TEMP ("ksp-js5-stage-" + [guid]::NewGuid().ToString("N"))
 $backup = Join-Path $Repo ("js5-exhaustive-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
@@ -79,7 +81,7 @@ if (-not $executable) {
     }
 }
 if (-not $executable) { throw "Gradle 8.8 not found" }
-& $executable -p $lab testExhaustiveCacheAudit testJs5HandshakePayload testJs5Provider testJs5OfflineExchange --no-daemon
+& $executable -p $lab testExhaustiveCacheAudit testJs5HandshakePayload testJs5Provider testJs5OfflineExchange testJs5MasterWireFixtureAudit --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Synthetic verification failed" }
 & $executable -p $lab auditRevision242Metadata "-PcachePath=$Cache" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Revision-242 metadata comparison failed" }
