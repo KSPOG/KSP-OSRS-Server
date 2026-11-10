@@ -280,7 +280,8 @@ tasks.register<JavaExec>("runJs5LocalDiagnostic") {
         val cache = providers.gradleProperty("cachePath").orNull
         val port = providers.gradleProperty("diagnosticPort").orNull ?: "43596"
         require(!cache.isNullOrBlank()) { "Provide -PcachePath=<verified-cache-directory>" }
-        require(port.toIntOrNull() in 1..65535) { "Invalid diagnostic port" }
+        val parsedPort = port.toIntOrNull()
+        require(parsedPort != null && parsedPort in 1..65535) { "Invalid diagnostic port" }
         args(cache, port, "--one-session")
     }
 }
