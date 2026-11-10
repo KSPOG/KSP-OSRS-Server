@@ -137,3 +137,27 @@ tasks.register<JavaExec>("testJs5HandshakePayload") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.Js5HandshakePayloadTest")
 }
+
+tasks.register<JavaExec>("testJs5MasterReferenceComparator") {
+    group = "verification"
+    description = "Synthetic tests for SHA-256-pinned offline JS5 master reference comparison."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5MasterReferenceComparatorTest")
+}
+
+tasks.register<JavaExec>("compareJs5MasterReference") {
+    group = "verification"
+    description = "Byte-exact offline comparison to an independently captured pinned master-index container."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5MasterReferenceComparator")
+    doFirst {
+        val cache = providers.gradleProperty("cachePath").orNull
+        val reference = providers.gradleProperty("masterReferencePath").orNull
+        val sha = providers.gradleProperty("masterReferenceSha256").orNull
+        require(!cache.isNullOrBlank()) { "Provide -PcachePath=<local-cache-folder>" }
+        require(!reference.isNullOrBlank()) { "Provide -PmasterReferencePath=<fixture.bin>" }
+        require(!sha.isNullOrBlank()) { "Provide -PmasterReferenceSha256=<64 hex digits>" }
+        args(cache, reference, sha)
+    }
+}
