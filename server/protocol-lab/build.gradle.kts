@@ -129,3 +129,11 @@ tasks.register<JavaExec>("auditJs5MasterIndex") {
         args(cache)
     }
 }
+
+tasks.register<JavaExec>("testJs5HandshakePayload") {
+    group = "verification"
+    description = "Test RSProt 242 JS5 initialization message parsing without opening sockets."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5HandshakePayloadTest")
+}
