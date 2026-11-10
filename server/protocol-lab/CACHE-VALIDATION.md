@@ -415,3 +415,21 @@ revision-242 client connection.
 - https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/prot/LoginClientProt.kt
 - https://github.com/blurite/rsprot/blob/master/protocol/osrs-242/osrs-242-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/InitJs5RemoteConnectionDecoder.kt
 - https://github.com/blurite/rsprox/blob/master/proxy/src/main/kotlin/net/rsprox/proxy/server/prot/LoginServerProtId.kt
+
+## Request-stream robustness gate
+
+`testJs5HandshakeRequestStream` runs socket tests against a temporary
+synthetic cache and revision-242 login acknowledgment. It checks split
+four-byte client messages, both priority controls, zero/nonzero XOR,
+prefetch reference-table delivery, missing groups, unknown opcodes,
+incomplete requests, and the explicit 32-request session cap. All
+unsupported inputs must terminate without returning fabricated data.
+
+```powershell
+& $gradle -p $lab testJs5HandshakeRequestStream --no-daemon
+```
+
+These tests do not enlarge the supported protocol surface: the harness
+remains a single-session diagnostic, not an authenticated production
+revision-242 JS5 service. Authenticated 255/255 delivery and actual client
+acceptance are still independent, unverified gates.
