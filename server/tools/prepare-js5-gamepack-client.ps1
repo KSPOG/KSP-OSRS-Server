@@ -117,10 +117,10 @@ param([string]$ClientRoot, [string]$LogPath, [string]$ProfileRoot, [int]$Port)
 Set-Location -LiteralPath $ClientRoot
 Write-Host 'KSP gamepack probe: isolated client profile, no automated authentication.'
 Write-Host 'Do not enter account credentials.'
-& (Join-Path $ClientRoot 'gradlew.bat') :client:runKspJs5GamepackProbe \
-    "-PkspJs5ProbePort=$Port" "-PkspJs5ProbeHome=$ProfileRoot" --no-daemon *>&1 |
+& (Join-Path $ClientRoot 'gradlew.bat') :client:runKspJs5GamepackProbe "-PkspJs5ProbePort=$Port" "-PkspJs5ProbeHome=$ProfileRoot" --no-daemon *>&1 |
     Tee-Object -FilePath $LogPath
-'@Set-Content -LiteralPath $launchScript -Value $launcher -Encoding UTF8
+'@
+Set-Content -LiteralPath $launchScript -Value $launcher -Encoding UTF8
 $serverProc = $null
 try {
     $serverProc = Start-Process -FilePath "powershell.exe" -PassThru -WindowStyle Hidden -ArgumentList @(
