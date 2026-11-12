@@ -612,3 +612,41 @@ weakening protocol checks or touching game-client networking.
 **The cross-branch protocol milestone is verified by the user's
 original logs.** Actual injected RuneScape client acceptance and
 private game login remain **unverified**.
+
+## Native injected-gamepack endpoint experiment (client branch, 2026-11-12)
+
+The separate `client` branch now implements an opt-in injected gamepack
+applet-endpoint experiment, **in addition to** the previously verified
+standalone socket diagnostic:
+
+- `KSP_OSRS_JS5_GAMEPACK_PROBE=true` must be explicitly enabled.
+- `KSP_OSRS_JS5_PROBE_PORT=43594` chooses the local test port.
+- Standard RuneLite and Microbot applet stubs provide a loopback codebase
+  and candidate `server`, `port1`, `port2` endpoint parameters.
+- The **normal production client path remains unchanged when disabled**.
+  `KSP_OSRS_PRIVATE_SERVER=true` is incompatible with the experimental
+  probe; existing discovery and readiness protections are not bypassed.
+- One-time client logs `KSP_JS5_GAMEPACK_CODEBASE` and
+  `KSP_JS5_GAMEPACK_PARAM` indicate which endpoint hints the injected
+  gamepack actually queries. Only parameter names, not account/session
+  data, are logged by these diagnostics.
+
+The `server/tools/prepare-js5-gamepack-client.ps1` script is the
+Git-free Windows entry point. It stages a pinned isolated client branch
+checkout if one is not already present, applies the probed source with
+backups, and compiles the full client without opening a listener by
+default. `-LaunchClient` explicitly starts the verified 255/255 JS5
+server at the same **43594** port and launches the full injected game
+client in a separate PowerShell window. The listener remains one-session,
+time-limited and loopback-only; the script captures separate server and
+client logs. Do not enter account credentials during this experiment.
+
+The 43594 choice follows the documented default game-server port used
+by RSProx, but **actual revision-242 native JS5 port selection is not
+confirmed**; a clean `NO_CLIENT_CONNECTED` result would be evidence
+that the endpoint hints did not cause a connection under that test.
+The unrelated standalone, byte-exact JS5 test on port **43596**
+remains verified and unchanged.
+
+This is explicitly **not** complete private login, server-world sync,
+client signature authentication, or production gamepack acceptance.
