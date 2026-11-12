@@ -32,6 +32,13 @@ try {
     $validHttp = ($response.StatusCode -eq 200)
     $hasClass = ($response.Content -match 'initial_class=client.class')
     $unsafeOrigin = ($response.Content -match '(?i)jagex.com|runescape.com')
+    $numeric = ([regex]::Matches($response.Content, '(?m)^param=\d+=')).Count
+    $hasLocalAuth = $response.Content -match '(?m)^param=11=http://127\.0\.0\.1:43595/'
+    $hasLocalWorlds = $response.Content -match '(?m)^param=17=http://127\.0\.0\.1:43595/'
+    $hasReferenceParameter = $response.Content -match '(?m)^param=12=301\s*$'
+    if ($numeric -lt 18 -or -not $hasLocalAuth -or -not $hasLocalWorlds -or -not $hasReferenceParameter) {
+        throw 'Isolated fixture missing expected historical bootstrap coverage'
+    }
     if (-not $validHttp -or -not $hasClass -or $unsafeOrigin) {
         throw 'Unexpected local jav_config response'
     }

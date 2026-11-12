@@ -15,11 +15,18 @@ param(
     [int]$Port = 43594,
     [int]$LocalConfigPort = 43595,
     [string]$LocalJavConfigPath = "",
+    [int]$MaxProbeSeconds = 180,
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "aa444b7315506391026cf60ec36b72b45acad079"
+if ($MaxProbeSeconds -lt 20 -or $MaxProbeSeconds -gt 1320) {
+    throw "MaxProbeSeconds must be within 20..1320"
+}
+# Exact client commit contains redacted param tracing and config diagnostics.
+$clientCommit = "1048c11c7ddd214b83d276b754c8f78ef98b4e7b"
 $serverCommit = "8b224b264ca18dab1997aef7b1b3aa22fe161fd6"
+# Reviewed fixture revision, separate from the stable JS5 probe script.
+$fixtureCommit = "29c990256c165c9d22115fb2a1c46aeadf108489"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if ($LocalConfigPort -lt 1 -or $LocalConfigPort -gt 65535 -or $LocalConfigPort -eq $Port) {
     throw "Local jav_config port must be valid and different from JS5 port"
@@ -129,8 +136,8 @@ Write-Host "KSP_JS5_SERVER_PREP downloadingPinnedProbe=true"
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/prepare-js5-client-probe.ps1" -OutFile $serverScript -UseBasicParsing -TimeoutSec 45
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/serve-js5-local-jav-config.ps1" -OutFile $localScript -UseBasicParsing -TimeoutSec 45
 if (-not $LocalJavConfigPath) {
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/jav_config.local.template.ws" -OutFile $localConfig -UseBasicParsing -TimeoutSec 45
-    Write-Warning "Using minimal unverified local configuration template. Only JS5 transport can be tested; game startup/login is not expected to work."
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$fixtureCommit/server/tools/jav_config.local.template.ws" -OutFile $localConfig -UseBasicParsing -TimeoutSec 45
+    Write-Warning "Using historical numeric applet values (NOT revision-242 verified). Authentication and gameplay remain disabled."
 }
 $launcher = @'
 param([string]$ClientRoot, [string]$LogPath, [string]$ProfileRoot, [int]$Port, [int]$LocalConfigPort)
@@ -202,7 +209,7 @@ try {
         "-LocalConfigPort", $LocalConfigPort
     )
     Write-Host "KSP_JS5_CLIENT_LAUNCH_REQUESTED processId=$($clientProc.Id) isolatedProfile=true"
-    $until = (Get-Date).AddMinutes(22)
+    $until = (Get-Date).AddSeconds($MaxProbeSeconds)
     $nextNotice = (Get-Date).AddSeconds(20)
     $sawHandshake = $false
     while ((Get-Date) -lt $until) {
@@ -215,6 +222,17 @@ try {
             }
         }
         if ($serverProc.HasExited) { break }
+        # The launcher uses -NoExit for visibility: inspect the log, not the
+        # PowerShell process state, to detect an immediate gamepack crash.
+        if (Test-Path -LiteralPath $clientLog) {
+            $clientText = Get-Content -LiteralPath $clientLog -Raw -ErrorAction SilentlyContinue
+            if ($clientText -match 'Failure during startup' -or
+                $clientText -match 'Cannot read field "al" because "rd.gr" is null' -or
+                $clientText -match 'BUILD FAILED') {
+                Write-Warning 'KSP_JS5_GAMEPACK_STARTUP_FAILURE detected; ending this diagnostic session'
+                break
+            }
+        }
         if ((Get-Date) -ge $nextNotice) {
             Write-Host "JS5 probe active: gamepack handshake observed=$sawHandshake; listening window is bounded."
             $nextNotice = (Get-Date).AddSeconds(20)
@@ -236,7 +254,7 @@ try {
     if (Test-Path -LiteralPath $clientLog) {
         $clientLines = @(Get-Content -LiteralPath $clientLog)
         Write-Host "Client JS5/GPU evidence:"
-        $clientLines | Where-Object { $_ -match "KSP_JS5_GPU_DISABLED|KSP_JS5_LOOPBACK_GUARD_ACTIVE|KSP_JS5_NONLOCAL_SOCKET_BLOCKED|KSP_JS5_LOCAL_CONFIG_ACCEPTED|GpuPlugin - Using device|error_game_js5connect|KSP_JS5_GAMEPACK|BUILD FAILED" } | Select-Object -Last 45
+        $clientLines | Where-Object { $_ -match "KSP_JS5_GPU_DISABLED|KSP_JS5_LOOPBACK_GUARD_ACTIVE|KSP_JS5_NONLOCAL_SOCKET_BLOCKED|KSP_JS5_LOCAL_CONFIG_ACCEPTED|KSP_JS5_APPLET_CONFIG_SUMMARY|KSP_JS5_GAMEPACK_PARAM_ACCESS|GpuPlugin - Using device|error_game_js5connect|KSP_JS5_GAMEPACK|KSP_OSRS_REVISION_READY|Failure during startup|BUILD FAILED" } | Select-Object -Last 80
         if ($clientLines -match "GpuPlugin - Using device") {
             Write-Warning "GPU was initialized despite the isolated safe-mode setting; inspect client log."
         }

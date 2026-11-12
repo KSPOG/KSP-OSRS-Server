@@ -9,6 +9,10 @@ on:
       - 'server/protocol-lab/**'
       - 'server/tools/js5_master_capture_proxy.py'
       - 'server/tools/test_js5_master_capture_proxy.py'
+      - 'server/tools/jav_config.local.template.ws'
+      - 'server/tools/serve-js5-local-jav-config.ps1'
+      - 'server/tools/test-js5-local-config.ps1'
+      - 'server/tools/prepare-js5-gamepack-client.ps1'
       - '.github/workflows/js5-protocol-lab.yml'
 
 permissions:
