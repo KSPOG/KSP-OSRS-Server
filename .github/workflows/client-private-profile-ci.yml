@@ -37,6 +37,8 @@ jobs:
             src/main/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfig.java \
             src/test/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfigSmokeTest.java
           java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspJs5GamepackProbeConfigSmokeTest
+          KSP_OSRS_JS5_GAMEPACK_PROBE=true KSP_OSRS_JS5_PROBE_PORT=43594 \
+            java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspJs5GamepackProbeConfigSmokeTest --enabled
           grep -q 'KspJs5GamepackProbeConfig.codeBase' src/main/java/net/runelite/client/rs/RSAppletStub.java
           grep -q 'KspJs5GamepackProbeConfig.parameter' src/main/java/net/runelite/client/rs/RSAppletStub.java
           grep -q 'KspJs5GamepackProbeConfig.codeBase' src/main/java/net/runelite/client/plugins/microbot/MicrobotRSAppletStub.java
