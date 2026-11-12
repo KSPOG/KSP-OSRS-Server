@@ -53,7 +53,7 @@ jobs:
         working-directory: server/tools
         run: |
           $ErrorActionPreference = 'Stop'
-          $files = @('test-js5-client-branch.ps1', 'prepare-js5-client-probe.ps1')
+          $files = @('test-js5-client-branch.ps1', 'prepare-js5-client-probe.ps1', 'prepare-js5-gamepack-client.ps1')
           foreach ($file in $files) {
             $tokens = $null
             $errors = $null
