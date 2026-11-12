@@ -21,6 +21,8 @@ import tempfile
 import threading
 import zlib
 
+from js5_reference_codec import parse_group_checksums, verified_group_payload
+
 ROOT = Path(__file__).resolve().parents[2]
 CLIENT = ROOT / "Microbot-main"
 CONFIG = CLIENT / "runelite-client/src/test/resources/net/runelite/client/rs/jav_config.local.js5probe.ws"
@@ -80,6 +82,31 @@ def frame_js5(archive: int, group: int, container: bytes, xor_key: int) -> bytes
         for index in range(len(output)):
             output[index] ^= xor_key
     return bytes(output)
+
+
+def load_verified_assets(reference_groups: dict[int, bytes]) -> dict[tuple[int, int], bytes]:
+    directory = os.environ.get("KSP_JS5_ASSET_DIR")
+    if not directory:
+        raise RuntimeError("Missing offline verified JS5 asset directory")
+    metadata = {archive: parse_group_checksums(table)
+                for archive, table in reference_groups.items()}
+    assets: dict[tuple[int, int], bytes] = {}
+    for file in sorted(Path(directory).glob("*.dat")):
+        values = file.stem.split("-")
+        if len(values) != 2 or not all(part.isdigit() for part in values):
+            raise RuntimeError("Malformed JS5 asset fixture filename")
+        archive, group = map(int, values)
+        index = metadata.get(archive, {})
+        expected = index.get(group)
+        if expected is None:
+            raise RuntimeError("Asset missing from verified JS5 reference table")
+        if (archive, group) in assets:
+            raise RuntimeError("Duplicate JS5 asset fixture")
+        data = file.read_bytes()
+        assets[archive, group] = verified_group_payload(data, *expected)
+    if (4, 0) not in assets or (4, 199) not in assets:
+        raise RuntimeError("Missing verified JS5 asset fixtures 4/0 and 4/199")
+    return assets
 
 def read_packet(connection: socket.socket, size: int) -> bytes:
     received = bytearray()
@@ -163,6 +190,8 @@ class Js5Handler(socketserver.BaseRequestHandler):
                     payload = self.server.master_data
                 elif archive == 255 and group in self.server.reference_groups:
                     payload = self.server.reference_groups[group]
+                elif (archive, group) in self.server.asset_groups:
+                    payload = self.server.asset_groups[archive, group]
                 else:
                     print("KSP_JS5_NATIVE_GROUP_UNAVAILABLE archive="
                           + str(archive) + " group=" + str(group), flush=True)
@@ -173,13 +202,21 @@ class Js5Handler(socketserver.BaseRequestHandler):
                     self.server.master_delivered.set()
                     print("KSP_JS5_NATIVE_PINNED_MASTER_DELIVERED bytes="
                           + str(len(frame)), flush=True)
-                else:
+                elif archive == 255:
                     if group == 4:
                         self.server.reference4_delivered.set()
                     if group == 6:
                         self.server.reference6_delivered.set()
                     print("KSP_JS5_NATIVE_VERIFIED_REFERENCE_DELIVERED group="
                           + str(group) + " bytes=" + str(len(frame)), flush=True)
+                else:
+                    if archive == 4 and group == 0:
+                        self.server.asset0_delivered.set()
+                    if archive == 4 and group == 199:
+                        self.server.asset199_delivered.set()
+                    print("KSP_JS5_NATIVE_VERIFIED_ASSET_DELIVERED archive="
+                          + str(archive) + " group=" + str(group)
+                          + " bytes=" + str(len(frame)), flush=True)
         except (OSError, TimeoutError):
             return
 
@@ -188,6 +225,7 @@ def main() -> int:
     verify_network_namespace()
     master = load_pinned_master()
     reference_groups = load_reference_groups(master)
+    asset_groups = load_verified_assets(reference_groups)
     body = CONFIG.read_bytes()
     if b"codebase=http://127.0.0.1:43594/" not in body:
         raise RuntimeError("The local fixture is missing loopback codebase")
@@ -204,8 +242,11 @@ def main() -> int:
             js5_server.master_delivered = threading.Event()
             js5_server.reference4_delivered = threading.Event()
             js5_server.reference6_delivered = threading.Event()
+            js5_server.asset0_delivered = threading.Event()
+            js5_server.asset199_delivered = threading.Event()
             js5_server.master_data = master
             js5_server.reference_groups = reference_groups
+            js5_server.asset_groups = asset_groups
             threading.Thread(target=config_server.serve_forever, daemon=True).start()
             threading.Thread(target=js5_server.serve_forever, daemon=True).start()
             print("KSP_JS5_ISOLATED_LISTENERS_READY ports=43594,43595", flush=True)
@@ -261,6 +302,8 @@ def main() -> int:
                 master_ok = js5_server.master_delivered.is_set()
                 reference_ok = js5_server.reference4_delivered.is_set()
                 reference6_ok = js5_server.reference6_delivered.is_set()
+                asset0_ok = js5_server.asset0_delivered.is_set()
+                asset199_ok = js5_server.asset199_delivered.is_set()
                 crash = 'Cannot read field "al" because "rd.gr" is null' in captured
                 print(
                     "KSP_JS5_NATIVE_ACCEPTANCE configFetched=" + str(config_ok).lower()
@@ -269,11 +312,14 @@ def main() -> int:
                     + " pinnedMasterDelivered=" + str(master_ok).lower()
                     + " reference4Delivered=" + str(reference_ok).lower()
                     + " reference6Delivered=" + str(reference6_ok).lower()
+                    + " asset4_0Delivered=" + str(asset0_ok).lower()
+                    + " asset4_199Delivered=" + str(asset199_ok).lower()
                     + " priorNpe=" + str(crash).lower(),
                     flush=True,
                 )
                 if (not config_ok or crash or not native_ok or not requested
-                        or not master_ok or not reference_ok or not reference6_ok):
+                        or not master_ok or not reference_ok or not reference6_ok
+                        or not asset0_ok or not asset199_ok):
                     return 1
                 return 0
 
