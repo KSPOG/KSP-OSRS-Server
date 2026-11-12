@@ -17,8 +17,24 @@ public final class KspJs5GamepackProbeConfigSmokeTest
         check(rejected, "Accepted unsafe or invalid probe settings");
     }
 
-    public static void main(String[] args)
+    public static void main(String[] args) throws Exception
     {
+        if (args.length == 1 && "--enabled".equals(args[0]))
+        {
+            check(KspJs5GamepackProbeConfig.enabled(), "Probe was not activated by environment");
+            check("127.0.0.1".equals(KspJs5GamepackProbeConfig.codeBase(
+                new java.net.URL("https://world.example/")).getHost()),
+                "Enabled probe codebase did not use localhost");
+            check(KspJs5GamepackProbeConfig.codeBase(
+                new java.net.URL("https://world.example/")).getPort() == 43594,
+                "Enabled probe codebase used wrong port");
+            check("127.0.0.1".equals(KspJs5GamepackProbeConfig.parameter("server", "world.example")),
+                "Enabled probe server parameter did not use localhost");
+            check("43594".equals(KspJs5GamepackProbeConfig.parameter("port1", "43594")),
+                "Enabled probe port1 parameter did not use 43594");
+            System.out.println("KspJs5GamepackProbeConfigSmokeTest: ENABLED PASS");
+            return;
+        }
         check(KspJs5GamepackProbeConfig.validate(false, true, "invalid") == 43594,
             "Disabled probe should not change normal/private settings");
         check(KspJs5GamepackProbeConfig.validate(true, false, null) == 43594,
