@@ -66,17 +66,43 @@ try {
     & $java.Source $clientJava $master
     if ($LASTEXITCODE -ne 0) { throw "Client-branch JS5 diagnostic failed, exit=$LASTEXITCODE" }
 
-    $proc.WaitForExit(15000) | Out-Null
-    Write-Host "JS5 server transcript:"
-    Get-Content -LiteralPath $stdout |
-        Where-Object { $_ -match "^(JS5_|master_sha256=|one_session=|real_revision_242_client_acceptance=)" }
-    if (Test-Path -LiteralPath $stderr) {
-        $errors = Get-Content -LiteralPath $stderr
-        if ($errors) { Write-Host "Server stderr:"; $errors | Select-Object -Last 20 }
-    }
+    # A Java response may finish before the Gradle process emits its
+    # completion banner and the wrapping PowerShell process exits. Waiting
+    # only 15 seconds led to a false failure after a successful TCP exchange.
+    $serverFinished = $proc.WaitForExit(90000)
     $proc.Refresh()
-    if (-not $proc.HasExited -or $proc.ExitCode -ne 0) {
-        throw "Server did not finish a clean one-session diagnostic"
+    Write-Host "JS5 server transcript:"
+    $serverLines = @()
+    if (Test-Path -LiteralPath $stdout) {
+        $serverLines = @(Get-Content -LiteralPath $stdout)
+        $serverLines |
+            Where-Object { $_ -match "^(JS5_|master_sha256=|one_session=|real_revision_242_client_acceptance=)" }
+    }
+    $errors = @()
+    if (Test-Path -LiteralPath $stderr) {
+        $errors = @(Get-Content -LiteralPath $stderr)
+    }
+    $report = @($serverLines | Where-Object { $_ -match "^JS5_CONTROLLED_PROBE_REPORT " })
+    if ($report.Count -ne 1 -or $report[0] -notmatch "handshakeAccepted=true"
+        -or $report[0] -notmatch "requests=3"
+        -or $report[0] -notmatch "responses=2"
+        -or $report[0] -notmatch "termination=CLIENT_CLOSED") {
+        Write-Host "Server tail (for diagnosis):"
+        $serverLines | Select-Object -Last 35
+        if ($errors.Count -gt 0) { Write-Host "Server stderr:"; $errors | Select-Object -Last 25 }
+        throw "Missing successful JS5 server-side session report. Logs: $root"
+    }
+    if (-not $serverFinished -or -not $proc.HasExited) {
+        Write-Host "Server-side protocol report is successful, but the Gradle wrapper has not exited."
+        Write-Host "Server tail:"
+        $serverLines | Select-Object -Last 25
+        throw "Gradle launcher did not exit within 90 seconds after protocol completion. Logs: $root"
+    }
+    if ($proc.ExitCode -ne 0) {
+        Write-Host "Server tail:"
+        $serverLines | Select-Object -Last 35
+        if ($errors.Count -gt 0) { Write-Host "Server stderr:"; $errors | Select-Object -Last 25 }
+        throw "JS5 protocol succeeded but launcher exited with code $($proc.ExitCode). Logs: $root"
     }
     Write-Host "KSP_JS5_CROSS_BRANCH_SMOKE_PASS"
     Write-Host "This proves transport from client-branch diagnostic only, NOT injected game client acceptance."
