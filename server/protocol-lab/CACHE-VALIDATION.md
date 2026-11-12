@@ -650,3 +650,49 @@ remains verified and unchanged.
 
 This is explicitly **not** complete private login, server-world sync,
 client signature authentication, or production gamepack acceptance.
+
+## Real injected revision-242 gamepack handshake CONFIRMED (2026-11-12)
+
+A user-supplied Windows PowerShell run of
+`server/tools/prepare-js5-gamepack-client.ps1 -LaunchClient` recorded
+**actual native gamepack** socket traffic on `127.0.0.1:43594`:
+
+- `JS5_HANDSHAKE_ACCEPTED revision=242`
+- First request was priority control opcode `3`.
+- Next request `(255,255)` received the externally pinned **208-byte**
+  JS5-framed archive master reference.
+- Archive reference tables `(255,4)`, `(255,6)`, `(255,8)`,
+  `(255,10)`, `(255,13)`, `(255,14)`, `(255,15)`, and
+  `(255,17)` were served successfully.
+- Real gamepack subsequently requested and received archive `4`
+  groups `0` through `21`.
+- **32 requests; 31 responses; 202,248 response bytes**.
+- Termination reason: **`REQUEST_LIMIT`**—the diagnostic's
+  configured 32-request cap, NOT a cache validation failure.
+
+This confirms the opt-in client applet endpoint mechanism is effective
+enough for the injected revision-242 gamepack to reach the localhost
+JS5 service and retrieve early cached resources. It does NOT yet prove
+that the gamepack finishes downloading, accepts every resource, reaches
+a complete login screen, or can use any world server.
+
+### Follow-up: extended, bounded gamepack JS5 diagnostics
+
+The default `Js5HandshakeDiagnosticServer.serveOne` and standalone
+verified-master tests retain their **32-request cap**. A new
+`--extended-client-session` argument to
+`Js5VerifiedMasterProbe` enables a deliberately bounded
+**8,192-request, 10-minute** one-session capture, with the
+same pinned SHA-256 and exact local-cache admission, loopback-only
+listener, 7-second socket idle read timeout, and opt-in startup.
+`Js5ExtendedSessionTest` tests more than 32 real request packets and
+the configured limit. The Windows
+`prepare-js5-client-probe.ps1 -ExtendedClientSession` activates the
+extended Gradle flag, while `prepare-js5-gamepack-client.ps1` now
+passes it automatically when explicitly launched using `-LaunchClient`.
+
+The next Windows result should reveal whether the native gamepack
+completes JS5 loading or encounters any further protocol problems.
+Use the server's `termination` report to distinguish a benign idle
+timeout from `REQUEST_LIMIT`, `GROUP_UNAVAILABLE` or a real client
+protocol error. Private login is still intentionally out of scope.
