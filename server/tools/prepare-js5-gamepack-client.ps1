@@ -155,15 +155,40 @@ try {
         "-ClientRoot", $ClientRoot, "-LogPath", $clientLog,
         "-ProfileRoot", (Join-Path $runRoot "isolated-client-home"), "-Port", $Port
     ) | Out-Null
-    $serverProc.WaitForExit(210000) | Out-Null
+    $until = (Get-Date).AddSeconds(210)
+    $nextNotice = (Get-Date).AddSeconds(20)
+    $sawHandshake = $false
+    while ((Get-Date) -lt $until) {
+        $serverProc.Refresh()
+        if (Test-Path -LiteralPath $serverOut) {
+            $serverText = Get-Content -LiteralPath $serverOut -Raw -ErrorAction SilentlyContinue
+            if (-not $sawHandshake -and $serverText -match 'JS5_HANDSHAKE_ACCEPTED') {
+                $sawHandshake = $true
+                Write-Host 'JS5 handshake observed on the localhost listener.'
+            }
+        }
+        if ($serverProc.HasExited) { break }
+        if ((Get-Date) -ge $nextNotice) {
+            Write-Host "JS5 probe active: gamepack handshake observed=$sawHandshake; listening window is bounded."
+            $nextNotice = (Get-Date).AddSeconds(20)
+        }
+        Start-Sleep -Seconds 1
+    }
     Write-Host "Server JS5 evidence:"
+    $serverText = ""
     if (Test-Path -LiteralPath $serverOut) {
-        Get-Content -LiteralPath $serverOut |
+        $serverText = Get-Content -LiteralPath $serverOut -Raw
+        $serverText -split "\\r?\\n" |
             Where-Object { $_ -match "^JS5_(CONTROLLED_PROBE|REQUEST|RESPONSE|HANDSHAKE|NO_CLIENT|CLIENT_CONNECTION)" }
+    }
+    if ($serverText -match "JS5_HANDSHAKE_ACCEPTED") {
+        Write-Host "KSP_JS5_GAMEPACK_SOCKET_OBSERVED: review client logs to establish the originating process."
+    } else {
+        Write-Host "KSP_JS5_GAMEPACK_SOCKET_NOT_OBSERVED: endpoint-hint routing remains unverified."
     }
     Write-Host "Client diagnostic log: $clientLog"
     Write-Host "Look for KSP_JS5_GAMEPACK_CODEBASE and KSP_JS5_GAMEPACK_PARAM in the client log."
-    Write-Host "JS5 actual gamepack client acceptance is UNVERIFIED until its logs confirm handshake and cache loading."
+    Write-Host "Client acceptance, successful cache loading and world login remain UNVERIFIED until tested."
 } finally {
     if ($serverProc) {
         $serverProc.Refresh()
