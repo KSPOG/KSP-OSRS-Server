@@ -145,3 +145,15 @@ An absent connection is an expected diagnostic result, not a successful
 client protocol test. Port 43594 is a hypothesis informed by documented
 default OSRS game-server behavior, not a verified revision-242 native
 JS5 port assignment.
+
+### GPU renderer disabled in native JS5 test profile
+
+The isolated `:client:runKspJs5GamepackProbe` startup explicitly disables
+the RuneLite `GpuPlugin` after core plugin configuration is loaded but
+**before** `PluginManager.startPlugins()`. The setting applies only when
+`KSP_OSRS_JS5_GAMEPACK_PROBE=true`, not to the normal Microbot profile.
+The isolated launch logs `KSP_JS5_GPU_DISABLED` after verifying that
+`PluginManager.isPluginEnabled(GpuPlugin)` is false. Missing or still-enabled
+GPU plugin state fails closed rather than attempting the controlled JS5
+test with hardware renderer enabled. No global GPU configuration is changed.
+The default software renderer is used for the diagnostic.
