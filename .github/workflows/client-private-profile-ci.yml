@@ -27,3 +27,12 @@ jobs:
           java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspServerDiscoverySmokeTest
           grep -q 'KSP_OSRS_REVISION' src/main/java/net/runelite/client/rs/ClientLoader.java
           grep -q 'KspServerDiscovery.verifyReady()' src/main/java/net/runelite/client/rs/ClientLoader.java
+
+      - name: Compile isolated JS5 client-branch diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd Microbot-main/runelite-client
+          javac --release 21 -d build/ksp-profile-tests \
+            src/main/java/net/runelite/client/plugins/microbot/KspJs5ConnectionProbe.java
+          echo "KspJs5ConnectionProbe compilation: PASS"
