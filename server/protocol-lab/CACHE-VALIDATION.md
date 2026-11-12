@@ -696,3 +696,53 @@ completes JS5 loading or encounters any further protocol problems.
 Use the server's `termination` report to distinguish a benign idle
 timeout from `REQUEST_LIMIT`, `GROUP_UNAVAILABLE` or a real client
 protocol error. Private login is still intentionally out of scope.
+
+## Native-gamepack second Windows run: GPU off; 8192-limit hit (2026-11-12)
+
+The subsequent Windows run proved that RuneLite actually started with
+`args: --safe-mode`; `KSP_JS5_GPU_DISABLED | probeOnly=true
+discoveredGpuPlugins=0 softwareRenderer=true` appeared, with no GPU
+device initialization in the provided client log. The gamepack still
+printed `error_game_js5connect`, and the *server* explicitly recorded:
+
+`JS5_CONTROLLED_PROBE_REPORT handshakeAccepted=true requests=8192
+responses=8191 responseBytes=7607380 termination=REQUEST_LIMIT`
+
+The one extra request is a control opcode. Successful responses are
+visible through the final group, e.g. archive `4` group `5435`.
+The attached tail of the native server transcript contains distinct
+group IDs from archives `3`, `4` and `12`; there is no
+`GROUP_UNAVAILABLE` termination in the session. This confirms
+high-volume cache delivery, **not** client-side acceptance of every
+group or resolution of the generic JS5 error.
+
+### Further bounded capture
+
+The 8,192-request cap was too short for this client's observed bulk
+cache download; simply raising the cap is a *diagnostic extension*, not
+a proven fix for `error_game_js5connect`.
+
+An explicitly selected native-client extended mode now has these
+limits: **150,000** requests, **20 minutes** elapsed session time,
+**30 seconds** socket idle timeout and exactly one localhost-only
+connection. A hard ceiling of **200,000** requests remains enforced
+on any caller. Ordinary synthetic mode stays at 32 requests with its
+original 7-second idle timeout. This gives room to observe whether
+the native gamepack proceeds through the complete cache download
+without silently making the listener unbounded.
+
+To prevent an enormous transcript, extended mode logs the first
+32 request/response events and then every 1,000th event. It still
+counts every request and byte, and reports any precise termination.
+The regression test checks 1,100 packets plus request event sampling,
+configured 64-request cap and the hard-ceiling rejection.
+
+The Windows wrapper previously ended its observation at 210 seconds;
+it now honors the 20-minute server session, with a bounded 22-minute
+observation limit after the listener becomes ready. Without this
+change, the wrapper could kill a healthy session prematurely.
+
+The open question is still whether the injected client fully accepts
+the cache and progresses, and if not, which protocol or configuration
+mismatch produces the client-side error. Do not infer a firewall fault
+from the generic update-server text. No account login is authorized.
