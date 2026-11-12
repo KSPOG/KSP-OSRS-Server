@@ -690,3 +690,33 @@ tasks.register<JavaExec>("probeKspJs5Connection") {
         args(archived)
     }
 }
+
+tasks.register<JavaExec>("runKspJs5GamepackProbe") {
+    group = "verification"
+    description = "Launch actual injected client with isolated no-account profile and explicit loopback JS5 hints."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("net.runelite.client.RuneLite")
+
+    val portText = providers.gradleProperty("kspJs5ProbePort").getOrElse("43594")
+    val port = portText.toIntOrNull()
+    require(port != null && port in 1..65535) { "Invalid kspJs5ProbePort" }
+
+    val isolatedHome = providers.gradleProperty("kspJs5ProbeHome").orNull
+        ?: layout.buildDirectory.dir("ksp-js5-probe-home").get().asFile.absolutePath
+    jvmArgs(
+        "-Dfile.encoding=UTF-8",
+        "-Duser.home=$isolatedHome",
+        "-ea"
+    )
+    environment("KSP_OSRS_JS5_GAMEPACK_PROBE", "true")
+    environment("KSP_OSRS_JS5_PROBE_PORT", portText)
+    environment("KSP_OSRS_PRIVATE_SERVER", "false")
+    environment("KSP_OSRS_LOG_REVISION", "true")
+
+    doFirst {
+        file(isolatedHome).mkdirs()
+        println("KSP_JS5_GAMEPACK_PROBE_LAUNCH port=$port"
+            + " isolatedHome=$isolatedHome privateProfile=false")
+        println("No automated authentication. Do not enter account credentials.")
+    }
+}
