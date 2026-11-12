@@ -12,11 +12,13 @@ No account credentials, official login automation, or private-ready bypass.
 param(
     [string]$Repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server",
     [string]$ClientRoot = "",
+    [int]$Port = 43594,
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "f0abb803393322b9690c369440a93d74dc6a4994"
+$clientCommit = "9332a59d269b5e3830f5f3fca797ac81cbdb470e"
 $serverCommit = "674d2f5e26a08718df7c0c18a3df201d5cd68679"
+if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
     $ClientRoot = Join-Path $Repo "client-gamepack-probe\Microbot-main"
 }
@@ -99,8 +101,8 @@ if (-not $LaunchClient) {
     Write-Host "No network listener or game client launched. Re-run with -LaunchClient when ready."
     return
 }
-if (Get-NetTCPConnection -LocalPort 43596 -State Listen -ErrorAction SilentlyContinue) {
-    throw "Port 43596 is already in use by a listener; close it before the controlled test"
+if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
+    throw "Port $Port is already in use by a listener; close it before the controlled test"
 }
 $runRoot = Join-Path $env:TEMP ("ksp-gamepack-probe-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
@@ -110,9 +112,9 @@ $serverOut = Join-Path $runRoot "server.log"
 $serverErr = Join-Path $runRoot "server.err"
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/prepare-js5-client-probe.ps1" -OutFile $serverScript -UseBasicParsing
 $launcher = @'
-param([string]$ClientRoot, [string]$LogPath)
+param([string]$ClientRoot, [string]$LogPath, [int]$Port)
 $env:KSP_OSRS_JS5_GAMEPACK_PROBE = 'true'
-$env:KSP_OSRS_JS5_PROBE_PORT = '43596'
+$env:KSP_OSRS_JS5_PROBE_PORT = $Port.ToString()
 $env:KSP_OSRS_PRIVATE_SERVER = 'false'
 $env:KSP_OSRS_LOG_REVISION = 'true'
 Set-Location -LiteralPath $ClientRoot
@@ -125,7 +127,7 @@ $serverProc = $null
 try {
     $serverProc = Start-Process -FilePath "powershell.exe" -PassThru -WindowStyle Hidden -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $serverScript,
-        "-Repo", $Repo, "-Listen"
+        "-Repo", $Repo, "-Port", $Port, "-Listen"
     ) -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
     $ready = $false
     $until = (Get-Date).AddSeconds(180)
@@ -152,7 +154,7 @@ try {
     $clientLog = Join-Path $runRoot "client.log"
     Start-Process -FilePath "powershell.exe" -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", $launchScript,
-        "-ClientRoot", $ClientRoot, "-LogPath", $clientLog
+        "-ClientRoot", $ClientRoot, "-LogPath", $clientLog, "-Port", $Port
     ) | Out-Null
     $serverProc.WaitForExit(210000) | Out-Null
     Write-Host "Server JS5 evidence:"
