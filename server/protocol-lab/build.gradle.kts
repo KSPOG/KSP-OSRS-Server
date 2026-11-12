@@ -408,3 +408,11 @@ tasks.register<JavaExec>("testJs5ProbeAcceptTimeout") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.ksp.osrs.protocol.Js5ProbeAcceptTimeoutTest")
 }
+
+tasks.register<JavaExec>("testJs5ExtendedSession") {
+    group = "verification"
+    description = "Verify explicitly configured native JS5 request budgets exceeding legacy 32, with fail-closed caps."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ExtendedSessionTest")
+}
