@@ -63,7 +63,9 @@ public class MicrobotClientLoader implements Supplier<Client>
 		this.clientConfigLoader = new MicrobotClientConfigLoader(okHttpClient);
 		this.worldSupplier = new MicrobotWorldSupplier(okHttpClient);
 		this.runtimeConfigLoader = runtimeConfigLoader;
-		this.javConfigUrl = KspPrivateServerConfig.resolveJavConfigUrl(javConfigUrl);
+		this.javConfigUrl = KspJs5GamepackProbeConfig.enabled()
+            ? KspJs5GamepackProbeConfig.localJavConfigUrl()
+            : KspPrivateServerConfig.resolveJavConfigUrl(javConfigUrl);
 	}
 
 	@Override
@@ -115,6 +117,23 @@ public class MicrobotClientLoader implements Supplier<Client>
 	public MicrobotRSConfig downloadConfig() throws IOException
 	{
 		HttpUrl url = HttpUrl.get(javConfigUrl);
+        if (KspJs5GamepackProbeConfig.enabled())
+        {
+            // Never fall back to Jagex configuration, world lookup or backup
+            // when running the private JS5 experiment.
+            MicrobotRSConfig localProbe = clientConfigLoader.fetch(url);
+            if (Strings.isNullOrEmpty(localProbe.getCodeBase())
+                || Strings.isNullOrEmpty(localProbe.getInitialJar())
+                || Strings.isNullOrEmpty(localProbe.getInitialClass()))
+            {
+                throw new IOException("Local JS5 jav_config is incomplete");
+            }
+            KspJs5GamepackProbeConfig.validateLocalConfig(
+                localProbe.getCodeBase(), localProbe.getClassLoaderProperties(),
+                localProbe.getAppletProperties());
+            log.info("KSP_JS5_LOCAL_CONFIG_ACCEPTED | origin=loopback noOfficialFallback=true");
+            return localProbe;
+        }
 		// Private profile is explicit and fail-closed: never fall back to official hosts.
 		if (KspPrivateServerConfig.enabled())
 		{
