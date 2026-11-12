@@ -13,7 +13,7 @@ param(
     [string]$Repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server"
 )
 $ErrorActionPreference = "Stop"
-$serverScriptCommit = "5384c022101fb3bc25b0a618be1e2235fac7a0ee"
+$serverScriptCommit = "219cbc0a4ce59b33024210ecf9308f3f9eb6134d"
 $clientCommit = "7154dd274e0386bccfe52fb2e0baa90d9ff1fca0"
 $master = Join-Path $Repo "server\cache-validation\openrs2-2757\external-master-255-255.dat"
 if (-not (Test-Path -LiteralPath $master -PathType Leaf)) {
