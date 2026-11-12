@@ -35,6 +35,7 @@ jobs:
           cd Microbot-main/runelite-client
           javac --release 21 -cp build/ksp-profile-tests -d build/ksp-profile-tests \
             src/main/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfig.java \
+            src/main/java/net/runelite/client/plugins/microbot/KspJs5LoopbackGuard.java \
             src/test/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfigSmokeTest.java
           java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspJs5GamepackProbeConfigSmokeTest
           KSP_OSRS_JS5_GAMEPACK_PROBE=true KSP_OSRS_JS5_PROBE_PORT=43594 \
@@ -46,6 +47,8 @@ jobs:
           grep -q 'KSP_JS5_GPU_DISABLED' src/main/java/net/runelite/client/RuneLite.java
           grep -q 'pluginManager.setPluginEnabled(plugin, false)' src/main/java/net/runelite/client/RuneLite.java
           grep -q 'args("--safe-mode")' build.gradle.kts
+          grep -q 'KspJs5LoopbackGuard.install' src/main/java/net/runelite/client/RuneLite.java
+          grep -q 'java.security.manager=allow' build.gradle.kts
           grep -q 'loadInSafeMode = false' src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java
 
       - name: Compile isolated JS5 client-branch diagnostic
