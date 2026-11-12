@@ -381,6 +381,9 @@ tasks.register<JavaExec>("runJs5VerifiedMasterProbe") {
             "Provide -PconfirmLocalProbe=true to explicitly enable localhost probe"
         }
         args(cache, archivedMaster, port, "--confirm-local-probe")
+        if (providers.gradleProperty("extendedJs5Session").orNull == "true") {
+            args("--extended-client-session")
+        }
     }
 }
 
