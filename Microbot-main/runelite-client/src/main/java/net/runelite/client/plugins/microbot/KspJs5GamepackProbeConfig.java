@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Experimental, explicit, loopback-only native gamepack connection probe.
@@ -17,6 +19,7 @@ public final class KspJs5GamepackProbeConfig
     private static final String PORT_FLAG = "KSP_OSRS_JS5_PROBE_PORT";
     private static final String HOST = "127.0.0.1";
     private static final int DEFAULT_PORT = 43594;
+    private static final Set<String> REPORTED = ConcurrentHashMap.newKeySet();
 
     private KspJs5GamepackProbeConfig() {}
 
@@ -69,6 +72,10 @@ public final class KspJs5GamepackProbeConfig
         int port = validate(enabled(), KspPrivateServerConfig.enabled(), System.getenv(PORT_FLAG));
         try
         {
+            if (REPORTED.add("codebase"))
+            {
+                System.out.println("KSP_JS5_GAMEPACK_CODEBASE | target=127.0.0.1:" + port);
+            }
             return new URL("http", HOST, port, "/");
         }
         catch (MalformedURLException impossible)
@@ -89,7 +96,13 @@ public final class KspJs5GamepackProbeConfig
             return original;
         }
         int port = validate(enabled(), KspPrivateServerConfig.enabled(), System.getenv(PORT_FLAG));
-        return resolveParameter(name, original, port);
+        String resolved = resolveParameter(name, original, port);
+        if (name != null && ("server".equals(name) || "port1".equals(name) || "port2".equals(name))
+            && REPORTED.add("param:" + name))
+        {
+            System.out.println("KSP_JS5_GAMEPACK_PARAM | name=" + name + " redirected=true");
+        }
+        return resolved;
     }
 
     static String resolveParameter(String name, String original, int port)
