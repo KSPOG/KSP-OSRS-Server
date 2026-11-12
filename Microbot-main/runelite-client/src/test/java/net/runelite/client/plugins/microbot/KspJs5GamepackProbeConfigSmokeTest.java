@@ -22,6 +22,15 @@ public final class KspJs5GamepackProbeConfigSmokeTest
         if (args.length == 1 && "--enabled".equals(args[0]))
         {
             check(KspJs5GamepackProbeConfig.enabled(), "Probe was not activated by environment");
+            KspJs5LoopbackGuard.install();
+            check(System.getSecurityManager() instanceof KspJs5LoopbackGuard,
+                "Loopback guard was not installed");
+            boolean networkBlocked = false;
+            try { System.getSecurityManager().checkConnect("oldschool.runescape.com", 43594); }
+            catch (SecurityException expected) { networkBlocked = true; }
+            check(networkBlocked, "Official network socket was not blocked by actual guard");
+            System.getSecurityManager().checkConnect("127.0.0.1", 43594);
+
             check("127.0.0.1".equals(KspJs5GamepackProbeConfig.codeBase(
                 new java.net.URL("https://world.example/")).getHost()),
                 "Enabled probe codebase did not use localhost");
