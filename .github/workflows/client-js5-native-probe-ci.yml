@@ -75,22 +75,23 @@ jobs:
               raise SystemExit("Revision-242 reference groups 255/4 and 255/6 are required")
           print("KSP_JS5_REFERENCE_TABLES_CRC_VERIFIED entries=" + str(len(verified))
                 + " archiveIds=" + ",".join(map(str, verified)))
-          reference4 = parse_group_checksums((dest / "255-4.dat").read_bytes())
           assets = Path("/tmp/ksp-js5-assets")
           assets.mkdir(mode=0o755, exist_ok=True)
-          for group in (0, 199):
-              expected = reference4.get(group)
+          for archive, group in ((4, 0), (4, 199), (17, 1)):
+              index = parse_group_checksums(
+                  (dest / ("255-" + str(archive) + ".dat")).read_bytes())
+              expected = index.get(group)
               if expected is None:
-                  raise SystemExit("Archive 4 group " + str(group)
+                  raise SystemExit("Archive " + str(archive) + " group " + str(group)
                                    + " not advertised in verified reference table")
-              address = ("https://archive.openrs2.org/caches/runescape/2757/archives/4/groups/"
-                         + str(group) + ".dat")
+              address = ("https://archive.openrs2.org/caches/runescape/2757/archives/"
+                         + str(archive) + "/groups/" + str(group) + ".dat")
               with urlopen(address, timeout=30) as response:
                   group_file = response.read(32 * 1024 * 1024 + 3)
               payload = verified_group_payload(group_file, *expected)
-              (assets / ("4-" + str(group) + ".dat")).write_bytes(payload)
-              print("KSP_JS5_ASSET_CRC_VERIFIED archive=4 group=" + str(group)
-                    + " bytes=" + str(len(payload)))
+              (assets / (str(archive) + "-" + str(group) + ".dat")).write_bytes(payload)
+              print("KSP_JS5_ASSET_CRC_VERIFIED archive=" + str(archive)
+                    + " group=" + str(group) + " bytes=" + str(len(payload)))
           PY
       - name: Verify isolated GUI/network tooling
         shell: bash
