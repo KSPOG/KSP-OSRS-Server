@@ -29,8 +29,10 @@ try {
         throw 'Local HTTP fixture server did not become ready'
     }
     $response = Invoke-WebRequest -Uri "http://127.0.0.1:$port/jav_config.ws" -UseBasicParsing -TimeoutSec 5
-    if ($response.StatusCode -ne 200 -or $response.Content -notmatch 'initial_class=client.class'
-        -or $response.Content -match '(?i)jagex.com|runescape.com') {
+    $validHttp = ($response.StatusCode -eq 200)
+    $hasClass = ($response.Content -match 'initial_class=client.class')
+    $unsafeOrigin = ($response.Content -match '(?i)jagex.com|runescape.com')
+    if (-not $validHttp -or -not $hasClass -or $unsafeOrigin) {
         throw 'Unexpected local jav_config response'
     }
     $notFound = $false
