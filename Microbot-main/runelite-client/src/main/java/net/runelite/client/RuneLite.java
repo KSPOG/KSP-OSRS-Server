@@ -549,8 +549,8 @@ public class RuneLite
             // Safe-mode intentionally excludes GpuPlugin from discovery.
             // Absence is the desired outcome; any discovered instance
             // has already been explicitly disabled and verified above.
-            log.info("KSP_JS5_GPU_DISABLED | probeOnly=true gpuPlugins={} softwareRenderer=true safeMode={}",
-                disabledGpuPlugins, safeMode);
+            log.info("KSP_JS5_GPU_DISABLED | probeOnly=true discoveredGpuPlugins={} softwareRenderer=true",
+                disabledGpuPlugins);
         }
 
 		// Start client session
