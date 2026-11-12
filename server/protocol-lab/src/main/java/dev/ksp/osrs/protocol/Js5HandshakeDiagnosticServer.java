@@ -23,7 +23,8 @@ public final class Js5HandshakeDiagnosticServer {
     public static final int INIT_JS5_OPCODE = 15;
     private static final int READ_TIMEOUT_MS = 7000;
     private static final int REQUEST_LIMIT = 32;
-    static final int MAX_CONTROLLED_REQUESTS = 65_536;
+    static final int MAX_CONTROLLED_REQUESTS = 200_000;
+    private static final int EXTENDED_IDLE_TIMEOUT_MS = 30_000;
 
     private Js5HandshakeDiagnosticServer() {}
 
@@ -78,7 +79,9 @@ public final class Js5HandshakeDiagnosticServer {
              var provider = new VerifiedJs5GroupProvider(cache)) {
             if (!client.getInetAddress().isLoopbackAddress())
                 throw new IOException("Refusing non-loopback client");
-            client.setSoTimeout(READ_TIMEOUT_MS);
+            // Native cache transfers can pause between batches. Only the
+            // explicitly extended, time-bounded session gets a longer idle timeout.
+            client.setSoTimeout(maxSessionMs > 0 ? EXTENDED_IDLE_TIMEOUT_MS : READ_TIMEOUT_MS);
             InputStream input = client.getInputStream();
             OutputStream output = client.getOutputStream();
 
@@ -128,7 +131,8 @@ public final class Js5HandshakeDiagnosticServer {
                 int requestOpcode = message[0] & 255;
                 int archive = message[1] & 255;
                 int group = ((message[2] & 255) << 8) | (message[3] & 255);
-                eventLog.accept("JS5_REQUEST ordinal=" + requests + " opcode="
+                if (maxSessionMs == 0 || requests <= 32 || (requests % 1000) == 0)
+                    eventLog.accept("JS5_REQUEST ordinal=" + requests + " opcode="
                     + requestOpcode + " archive=" + archive + " group=" + group);
                 if (requestOpcode > 4)
                     return new Report(true, requests, responses, bytes, "UNKNOWN_REQUEST");
@@ -158,7 +162,8 @@ public final class Js5HandshakeDiagnosticServer {
                     output.flush();
                     responses++;
                     bytes += frame.length;
-                    eventLog.accept("JS5_RESPONSE ordinal=" + requests + " archive="
+                    if (maxSessionMs == 0 || requests <= 32 || (requests % 1000) == 0)
+                        eventLog.accept("JS5_RESPONSE ordinal=" + requests + " archive="
                         + archive + " group=" + group + " bytes=" + frame.length);
                 } finally {
                     response.release();
