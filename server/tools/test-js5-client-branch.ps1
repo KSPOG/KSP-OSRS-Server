@@ -83,10 +83,16 @@ try {
         $errors = @(Get-Content -LiteralPath $stderr)
     }
     $report = @($serverLines | Where-Object { $_ -match "^JS5_CONTROLLED_PROBE_REPORT " })
-    if ($report.Count -ne 1 -or $report[0] -notmatch "handshakeAccepted=true"
-        -or $report[0] -notmatch "requests=3"
-        -or $report[0] -notmatch "responses=2"
-        -or $report[0] -notmatch "termination=CLIENT_CLOSED") {
+    $sessionVerified = $false
+    if ($report.Count -eq 1) {
+        $line = [string]$report[0]
+        $sessionVerified = ($line -match 'handshakeAccepted=true') -and
+            ($line -match 'requests=3') -and
+            ($line -match 'responses=2') -and
+            ($line -match 'responseBytes=2939') -and
+            ($line -match 'termination=CLIENT_CLOSED')
+    }
+    if (-not $sessionVerified) {
         Write-Host "Server tail (for diagnosis):"
         $serverLines | Select-Object -Last 35
         if ($errors.Count -gt 0) { Write-Host "Server stderr:"; $errors | Select-Object -Last 25 }
