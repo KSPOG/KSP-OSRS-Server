@@ -17,7 +17,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $clientCommit = "97ea1f610abda355881d350ed10df3bcb5edcba5"
-$serverCommit = "8484c8bdd8932dd046884d81bebdc0186adac40d"
+$serverCommit = "b46a58645e9f171c42fe753d46f29aa4dd8acf5c"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
     $ClientRoot = Join-Path $Repo "client-gamepack-probe\Microbot-main"
@@ -161,7 +161,7 @@ try {
         "-ProfileRoot", (Join-Path $runRoot "isolated-client-home"), "-Port", $Port
     )
     Write-Host "KSP_JS5_CLIENT_LAUNCH_REQUESTED processId=$($clientProc.Id) isolatedProfile=true"
-    $until = (Get-Date).AddSeconds(210)
+    $until = (Get-Date).AddMinutes(22)
     $nextNotice = (Get-Date).AddSeconds(20)
     $sawHandshake = $false
     while ((Get-Date) -lt $until) {
