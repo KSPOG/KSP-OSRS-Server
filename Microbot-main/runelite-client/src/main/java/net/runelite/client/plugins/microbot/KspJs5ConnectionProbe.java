@@ -62,7 +62,7 @@ public final class KspJs5ConnectionProbe
             output.flush();
             // First 3 bytes of the XOR-encoded group must carry archive=255, group=24.
             byte[] prefix = input.readNBytes(3);
-            if (prefix.length != 3 || (prefix[0] ^ 0x5a & 255) != 255
+            if (prefix.length != 3 || ((prefix[0] ^ 0x5a) & 255) != 255
                 || ((prefix[1] ^ 0x5a) & 255) != 0
                 || ((prefix[2] ^ 0x5a) & 255) != 24)
                 throw new IOException("Group 255/24 XOR-encoded response prefix mismatch");
