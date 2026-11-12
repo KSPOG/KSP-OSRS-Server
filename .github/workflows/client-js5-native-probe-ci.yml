@@ -1,0 +1,120 @@
+name: JS5 native gamepack loopback acceptance (no login)
+
+on:
+  pull_request:
+    branches: [client]
+    paths:
+      - 'Microbot-main/runelite-client/**'
+      - '.github/scripts/js5_gamepack_headless_probe.py'
+      - '.github/workflows/client-js5-native-probe-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build injected Microbot client before network isolation
+        shell: bash
+        working-directory: Microbot-main
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew :client:compileJava :client:primeKspJs5RuntimeClasspath --no-daemon --console=plain
+      - name: Fetch and pin independent OpenRS2 revision-242 master
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import struct
+          import zlib
+          from pathlib import Path
+          from urllib.request import urlopen
+          import sys
+          sys.path.insert(0, str(Path(".github/scripts").resolve()))
+          from js5_reference_codec import parse_group_checksums, verified_group_payload
+
+          source = "https://archive.openrs2.org/caches/runescape/2757/archives/255/groups/255.dat"
+          expected = "a5ab2044f9845e7beffa3bc8a338f0bd21a1156ba1819a438378c4f2d8328e38"
+          with urlopen(source, timeout=30) as response:
+              raw = response.read(206)
+          if len(raw) != 205 or hashlib.sha256(raw).hexdigest() != expected:
+              raise SystemExit("Refusing unverified or oversized OpenRS2 2757 master")
+          Path("/tmp/ksp-js5-master-255-255.dat").write_bytes(raw)
+          print("KSP_JS5_MASTER_PIN_VERIFIED bytes=205 revision=242")
+          if raw[:5] != bytes((0, 0, 0, 0, 200)):
+              raise SystemExit("Invalid revision-242 master header")
+          # Exactly 25 CRC32+revision entries are authenticated by the pinned master.
+          reference_root = "https://archive.openrs2.org/caches/runescape/2757/archives/255/groups"
+          dest = Path("/tmp/ksp-js5-refs")
+          dest.mkdir(mode=0o755, exist_ok=True)
+          verified = []
+          for archive in range(25):
+              expected_crc = struct.unpack(">I", raw[5 + archive * 8:9 + archive * 8])[0]
+              if not expected_crc:
+                  continue
+              reference_url = reference_root + "/" + str(archive) + ".dat"
+              with urlopen(reference_url, timeout=30) as response:
+                  reference = response.read(4 * 1024 * 1024 + 1)
+              actual_crc = zlib.crc32(reference) & 0xFFFFFFFF
+              if not 5 <= len(reference) <= 4 * 1024 * 1024 or actual_crc != expected_crc:
+                  raise SystemExit("Refusing OpenRS2 255/" + str(archive)
+                                   + ": pinned master-index CRC mismatch")
+              (dest / ("255-" + str(archive) + ".dat")).write_bytes(reference)
+              verified.append(archive)
+          if not {4, 6}.issubset(verified):
+              raise SystemExit("Revision-242 reference groups 255/4 and 255/6 are required")
+          print("KSP_JS5_REFERENCE_TABLES_CRC_VERIFIED entries=" + str(len(verified))
+                + " archiveIds=" + ",".join(map(str, verified)))
+          assets = Path("/tmp/ksp-js5-assets")
+          assets.mkdir(mode=0o755, exist_ok=True)
+          for archive, group in ((4, 0), (4, 199), (17, 1)):
+              index = parse_group_checksums(
+                  (dest / ("255-" + str(archive) + ".dat")).read_bytes())
+              expected = index.get(group)
+              if expected is None:
+                  raise SystemExit("Archive " + str(archive) + " group " + str(group)
+                                   + " not advertised in verified reference table")
+              address = ("https://archive.openrs2.org/caches/runescape/2757/archives/"
+                         + str(archive) + "/groups/" + str(group) + ".dat")
+              with urlopen(address, timeout=30) as response:
+                  group_file = response.read(32 * 1024 * 1024 + 3)
+              payload = verified_group_payload(group_file, *expected)
+              (assets / (str(archive) + "-" + str(group) + ".dat")).write_bytes(payload)
+              print("KSP_JS5_ASSET_CRC_VERIFIED archive=" + str(archive)
+                    + " group=" + str(group) + " bytes=" + str(len(payload)))
+          PY
+      - name: Verify isolated GUI/network tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v Xvfb >/dev/null || ! command -v ip >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb iproute2
+          fi
+          command -v Xvfb
+          command -v ip
+          command -v unshare
+          command -v runuser
+          python3 -m py_compile .github/scripts/js5_gamepack_headless_probe.py .github/scripts/js5_reference_codec.py .github/scripts/test_js5_reference_codec.py
+          python3 -m unittest discover -s .github/scripts -p 'test_js5_*.py' -v
+      - name: Native gamepack handshake against loopback-only network namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          Xvfb :99 -screen 0 1280x720x24 -nolisten tcp > /tmp/ksp-xvfb.log 2>&1 &
+          xvfb_pid=$!
+          trap 'kill "$xvfb_pid" 2>/dev/null || true' EXIT
+          sleep 2
+          # Do not permit fallback if the OS namespace cannot be created.
+          # No default network interfaces exist inside this namespace.
+          sudo unshare --net -- bash -c "set -euo pipefail; ip link set lo up; runuser -u $(id -un) -- env HOME=$HOME DISPLAY=:99 KSP_JS5_MASTER_FILE=/tmp/ksp-js5-master-255-255.dat KSP_JS5_REFERENCE_DIR=/tmp/ksp-js5-refs KSP_JS5_ASSET_DIR=/tmp/ksp-js5-assets python3 '$PWD/.github/scripts/js5_gamepack_headless_probe.py'"

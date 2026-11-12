@@ -2,6 +2,8 @@ name: Microbot full compile (integration gate)
 on:
   push:
     branches: [client]
+  pull_request:
+    branches: [client]
   workflow_dispatch:
 jobs:
   compile:

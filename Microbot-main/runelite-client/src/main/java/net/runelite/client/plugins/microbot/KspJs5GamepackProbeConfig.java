@@ -24,6 +24,14 @@ public final class KspJs5GamepackProbeConfig
     private static final String HOST = "127.0.0.1";
     private static final int DEFAULT_PORT = 43594;
     private static final Set<String> REPORTED = ConcurrentHashMap.newKeySet();
+    // Historical RuneLite fixture keys, used for diagnostics only. These are
+    // NOT asserted to be sufficient or required by the revision-242 gamepack.
+    private static final String[] REFERENCE_PARAMETER_KEYS = {
+        "1", "3", "4", "5", "6", "7", "8", "10", "12", "14", "15", "16"
+    };
+    private static final java.util.concurrent.atomic.AtomicInteger REPORTED_ACCESS =
+        new java.util.concurrent.atomic.AtomicInteger();
+    private static final int MAX_PARAMETER_ACCESS_LOGS = 64;
 
     private KspJs5GamepackProbeConfig() {}
 
@@ -113,6 +121,45 @@ public final class KspJs5GamepackProbeConfig
         }
     }
 
+    /**
+     * Report configuration completeness without printing parameter values.
+     * In particular, an isolated fixture with zero numeric parameters is
+     * insufficient to reproduce ordinary RuneLite applet startup.
+     */
+    public static void reportLocalConfigSummary(Map<String, String> parameters)
+    {
+        if (!enabled())
+        {
+            return;
+        }
+        int numericCount = 0;
+        for (String key : parameters.keySet())
+        {
+            if (key != null && key.matches("[0-9]{1,3}"))
+            {
+                numericCount++;
+            }
+        }
+        java.util.List<String> absentReferenceKeys = new java.util.ArrayList<>();
+        for (String key : REFERENCE_PARAMETER_KEYS)
+        {
+            if (!parameters.containsKey(key))
+            {
+                absentReferenceKeys.add(key);
+            }
+        }
+        System.out.println("KSP_JS5_APPLET_CONFIG_SUMMARY | totalKeys="
+            + parameters.size() + " numericKeys=" + numericCount
+            + " missingHistoricalReferenceKeys=" + String.join(",", absentReferenceKeys)
+            + " valuesLogged=false");
+    }
+
+    static String safeDiagnosticName(String name)
+    {
+        return name != null && name.matches("(?:[0-9]{1,3}|server|port1|port2)")
+            ? name : "other";
+    }
+
     public static void validateConfiguration()
     {
         validate(enabled(), KspPrivateServerConfig.enabled(),
@@ -182,6 +229,16 @@ public final class KspJs5GamepackProbeConfig
         }
         int port = validate(enabled(), KspPrivateServerConfig.enabled(), System.getenv(PORT_FLAG));
         String resolved = resolveParameter(name, original, port);
+        // Record only safe key names and null status, never URLs, tokens or
+        // parameter values. The gamepack calls this during client.init.
+        String diagnosticName = safeDiagnosticName(name);
+        if (REPORTED.add("access:" + diagnosticName)
+            && REPORTED_ACCESS.incrementAndGet() <= MAX_PARAMETER_ACCESS_LOGS)
+        {
+            System.out.println("KSP_JS5_GAMEPACK_PARAM_ACCESS | name=" + diagnosticName
+                + " provided=" + (original != null) + " resolved=" + (resolved != null)
+                + " valuesLogged=false");
+        }
         if (name != null && ("server".equals(name) || "port1".equals(name) || "port2".equals(name))
             && REPORTED.add("param:" + name))
         {

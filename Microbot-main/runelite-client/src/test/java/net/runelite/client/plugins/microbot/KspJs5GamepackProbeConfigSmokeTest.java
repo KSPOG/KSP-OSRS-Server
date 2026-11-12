@@ -41,6 +41,31 @@ public final class KspJs5GamepackProbeConfigSmokeTest
                 "Enabled probe server parameter did not use localhost");
             check("43594".equals(KspJs5GamepackProbeConfig.parameter("port1", "43594")),
                 "Enabled probe port1 parameter did not use 43594");
+            // Neither config summaries nor parameter access traces may expose
+            // values from applet properties (which may contain credentials).
+            java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+            java.io.PrintStream originalOutput = System.out;
+            try
+            {
+                System.setOut(new java.io.PrintStream(buffer, true,
+                    java.nio.charset.StandardCharsets.UTF_8));
+                KspJs5GamepackProbeConfig.reportLocalConfigSummary(
+                    java.util.Map.of("1", "sensitive-placeholder", "11", "secret-assertion"));
+                KspJs5GamepackProbeConfig.parameter("11", "secret-assertion");
+                KspJs5GamepackProbeConfig.parameter("credential-token-name", "secret-assertion");
+            }
+            finally
+            {
+                System.setOut(originalOutput);
+            }
+            String trace = buffer.toString(java.nio.charset.StandardCharsets.UTF_8);
+            check(trace.contains("KSP_JS5_APPLET_CONFIG_SUMMARY"),
+                "Enabled probe did not report local parameter coverage");
+            check(trace.contains("KSP_JS5_GAMEPACK_PARAM_ACCESS"),
+                "Enabled probe did not report parameter access");
+            check(!trace.contains("secret-assertion") && !trace.contains("sensitive-placeholder")
+                && !trace.contains("credential-token-name"),
+                "Probe trace exposed sensitive applet configuration");
             System.out.println("KspJs5GamepackProbeConfigSmokeTest: ENABLED PASS");
             return;
         }
@@ -54,6 +79,12 @@ public final class KspJs5GamepackProbeConfigSmokeTest
         reject(true, false, "invalid");
         reject(true, false, "0");
         reject(true, false, "65536");
+        check("12".equals(KspJs5GamepackProbeConfig.safeDiagnosticName("12")),
+            "Numeric diagnostic key not preserved");
+        check("port1".equals(KspJs5GamepackProbeConfig.safeDiagnosticName("port1")),
+            "Endpoint hint diagnostic key not preserved");
+        check("other".equals(KspJs5GamepackProbeConfig.safeDiagnosticName("secret")),
+            "Arbitrary diagnostic key exposed");
         check(KspJs5LoopbackGuard.isLoopbackHost("127.0.0.1"), "Loopback IPv4 refused");
         check(KspJs5LoopbackGuard.isLoopbackHost("::1"), "Loopback IPv6 refused");
         check(!KspJs5LoopbackGuard.isLoopbackHost("oldschool.runescape.com"),

@@ -691,6 +691,22 @@ tasks.register<JavaExec>("probeKspJs5Connection") {
     }
 }
 
+// Fetch and verify the exact runtime artifacts while the CI runner still has
+// package registry access. The subsequent gamepack launch takes place inside
+// a loopback-only OS namespace using Gradle --offline.
+tasks.register("primeKspJs5RuntimeClasspath") {
+    group = "verification"
+    description = "Materialize all injected-client runtime dependencies before offline JS5 probe."
+    doLast {
+        val artifacts = configurations.runtimeClasspath.get().resolve()
+        require(artifacts.isNotEmpty()) { "JS5 injected-client runtime classpath was empty" }
+        require(artifacts.all { it.isFile && it.length() > 0L }) {
+            "JS5 runtime classpath contains missing or empty artifacts"
+        }
+        println("KSP_JS5_RUNTIME_DEPENDENCIES_READY artifactCount=${artifacts.size}")
+    }
+}
+
 tasks.register<JavaExec>("runKspJs5GamepackProbe") {
     group = "verification"
     description = "Launch actual injected client with isolated no-account profile and explicit loopback JS5 hints."
