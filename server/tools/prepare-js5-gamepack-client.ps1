@@ -16,7 +16,7 @@ param(
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "0cd2eb73de715d4a334c83b5af70ce87fcc420bf"
+$clientCommit = "5d1f2d8d9f0809ef4ee3e526d83d065abebcf2b8"
 $serverCommit = "674d2f5e26a08718df7c0c18a3df201d5cd68679"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
@@ -163,6 +163,7 @@ try {
             Where-Object { $_ -match "^JS5_(CONTROLLED_PROBE|REQUEST|RESPONSE|HANDSHAKE|NO_CLIENT|CLIENT_CONNECTION)" }
     }
     Write-Host "Client diagnostic log: $clientLog"
+    Write-Host "Look for KSP_JS5_GAMEPACK_CODEBASE and KSP_JS5_GAMEPACK_PARAM in the client log."
     Write-Host "JS5 actual gamepack client acceptance is UNVERIFIED until its logs confirm handshake and cache loading."
 } finally {
     if ($serverProc) {
