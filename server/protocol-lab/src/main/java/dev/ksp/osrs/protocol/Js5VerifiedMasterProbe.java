@@ -56,8 +56,8 @@ public final class Js5VerifiedMasterProbe {
         if (port < 1 || port > 65535)
             throw new IllegalArgumentException("Port must be 1..65535");
         boolean extended = args.length == 5;
-        final int requestLimit = extended ? 8192 : 32;
-        final long sessionDurationMs = extended ? 600_000L : 0L;
+        final int requestLimit = extended ? 150_000 : 32;
+        final long sessionDurationMs = extended ? 1_200_000L : 0L;
         // Admission completes BEFORE any TCP port is opened.
         byte[] verifiedMaster = admit(cache, master);
         try (ServerSocket server = Js5LocalDiagnosticServer.bind(port)) {
@@ -67,6 +67,10 @@ public final class Js5VerifiedMasterProbe {
             System.out.println("one_session=true accept_timeout=180s request_timeout=7s max_requests="
                 + requestLimit + " session_timeout_ms=" + sessionDurationMs);
             System.out.println("real_revision_242_client_acceptance=NOT_YET_VERIFIED");
+            if (extended) {
+                System.out.println("JS5_EXTENDED_CAPTURE_CONFIG idle_timeout_ms=30000"
+                    + " request_logging=first32_then_every1000 max_session_minutes=20");
+            }
             Js5HandshakeDiagnosticServer.Report report =
                 Js5HandshakeDiagnosticServer.serveOne(server, cache, verifiedMaster, 180_000,
                     requestLimit, sessionDurationMs, System.out::println);
