@@ -17,7 +17,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $clientCommit = "a206724fedd704ad22eeddeddc0d85844c3c3530"
-$serverCommit = "674d2f5e26a08718df7c0c18a3df201d5cd68679"
+$serverCommit = "8484c8bdd8932dd046884d81bebdc0186adac40d"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
     $ClientRoot = Join-Path $Repo "client-gamepack-probe\Microbot-main"
@@ -129,7 +129,7 @@ try {
     Write-Host "KSP_JS5_SERVER_START port=$Port"
     $serverProc = Start-Process -FilePath "powershell.exe" -PassThru -WindowStyle Hidden -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $serverScript,
-        "-Repo", $Repo, "-Port", $Port, "-Listen"
+        "-Repo", $Repo, "-Port", $Port, "-Listen", "-ExtendedClientSession"
     ) -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
     $ready = $false
     $until = (Get-Date).AddSeconds(180)
