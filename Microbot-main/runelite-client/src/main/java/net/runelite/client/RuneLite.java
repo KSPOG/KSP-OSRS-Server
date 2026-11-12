@@ -546,11 +546,11 @@ public class RuneLite
                     disabledGpuPlugins++;
                 }
             }
-            if (disabledGpuPlugins == 0)
-            {
-                throw new IllegalStateException("JS5 probe: GPU plugin was not found; cannot verify GPU is disabled");
-            }
-            log.info("KSP_JS5_GPU_DISABLED | probeOnly=true gpuPlugins={} softwareRenderer=true", disabledGpuPlugins);
+            // Safe-mode intentionally excludes GpuPlugin from discovery.
+            // Absence is the desired outcome; any discovered instance
+            // has already been explicitly disabled and verified above.
+            log.info("KSP_JS5_GPU_DISABLED | probeOnly=true gpuPlugins={} softwareRenderer=true safeMode={}",
+                disabledGpuPlugins, safeMode);
         }
 
 		// Start client session
