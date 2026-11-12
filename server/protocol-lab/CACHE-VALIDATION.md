@@ -586,3 +586,29 @@ limits and client branch selection are preserved.
 The smoke still uses a **standalone client-branch socket tester**,
 not the real injected game client. Therefore real gamepack JS5
 acceptance and game login remain unverified.
+
+## Cross-branch Windows verification and nullable child process exit code
+
+On 2026-11-12, a full Windows PowerShell 5.1 transcript conclusively
+verified the standalone client-branch TCP diagnostic:
+
+- Client: `KSP_JS5_CLIENT_BRANCH_DIAGNOSTIC_PASS`
+- Server: `handshakeAccepted=true requests=3 responses=2
+  responseBytes=2939 termination=CLIENT_CLOSED`.
+- 208 bytes were returned for master `255/255`; 2,731 bytes for
+  XOR-protected reference `255/24`.
+- The server Gradle process printed `BUILD SUCCESSFUL in 25s`.
+
+The old runner then incorrectly failed because the wrapping PowerShell
+process object reported a **null** `ExitCode` after shutdown. This
+is independent of JS5 wire success. The updated
+`server/tools/test-js5-client-branch.ps1` accepts a null exit code
+only when the process did exit, Gradle emitted `BUILD SUCCESSFUL`,
+no `BUILD FAILED` marker exists, and the exact successful server
+session report is present. Nonzero exit codes or any missing evidence
+still fail the test. This fixes result classification without
+weakening protocol checks or touching game-client networking.
+
+**The cross-branch protocol milestone is verified by the user's
+original logs.** Actual injected RuneScape client acceptance and
+private game login remain **unverified**.
