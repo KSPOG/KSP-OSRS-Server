@@ -708,6 +708,8 @@ tasks.register<JavaExec>("runKspJs5GamepackProbe") {
         ?: layout.buildDirectory.dir("ksp-js5-probe-home").get().asFile.absolutePath
     jvmArgs(
         "-Dfile.encoding=UTF-8",
+        // Java 21 diagnostic-only checkConnect guard; Java 24+ requires alternative isolation.
+        "-Djava.security.manager=allow",
         "-Duser.home=$isolatedHome",
         "-ea"
     )
