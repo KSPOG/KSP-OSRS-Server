@@ -53,7 +53,7 @@ jobs:
         working-directory: server/tools
         run: |
           $ErrorActionPreference = 'Stop'
-          $files = @('test-js5-client-branch.ps1', 'prepare-js5-client-probe.ps1', 'prepare-js5-gamepack-client.ps1', 'serve-js5-local-jav-config.ps1')
+          $files = @('test-js5-client-branch.ps1', 'prepare-js5-client-probe.ps1', 'prepare-js5-gamepack-client.ps1', 'serve-js5-local-jav-config.ps1', 'test-js5-local-config.ps1')
           foreach ($file in $files) {
             $tokens = $null
             $errors = $null
@@ -67,3 +67,8 @@ jobs:
             }
             Write-Host "PowerShell syntax PASS: $file"
           }
+
+      - name: Verify loopback jav_config fixture server
+        shell: pwsh
+        working-directory: server/tools
+        run: ./test-js5-local-config.ps1
