@@ -746,3 +746,46 @@ The open question is still whether the injected client fully accepts
 the cache and progresses, and if not, which protocol or configuration
 mismatch produces the client-side error. Do not infer a firewall fault
 from the generic update-server text. No account login is authorized.
+
+## Isolation correction: cache JS5 connectivity is not a private game (2026-11-12)
+
+The original injected Microbot gamepack experiment redirected the JS5
+codebase to localhost but **continued to obtain the official
+`jav_config`**. That configuration exposes additional numbered
+service URLs, including official authentication and world endpoints.
+Consequently, the >119,000 native JS5 cache requests observed in the
+previous logs demonstrate **cache transport only**; no successful
+private world selection, account login or independent gameplay.
+
+The separate client branch now requires an explicitly configured
+loopback `KSP_OSRS_JS5_LOCAL_JAV_CONFIG_URL`. Its two loader paths
+fetch that URL **without the official retry, backup-config or
+world-list fallback**, and reject off-local URLs/known production
+domain strings in the config values. Probe mode refuses to start
+if the local URL is missing.
+
+The dedicated Java 21 gamepack test task activates a diagnostic
+`KspJs5LoopbackGuard` via
+`-Djava.security.manager=allow` **before RuneLite bootstrap**.
+Java socket permission checks are restricted to localhost addresses;
+blocked nonlocal destinations are logged in a bounded fashion.
+Regression tests exercise an actual blocked official-host
+`checkConnect` and allowed local endpoint. Other Microbot startup
+paths are unchanged, and `--safe-mode` still prevents GPU loading.
+
+The server-branch `server/tools/serve-js5-local-jav-config.ps1`
+serves a reviewed local configuration from `127.0.0.1:43595` for
+one bounded diagnostic run. The Windows gamepack launcher starts
+this service **before** starting the cached JS5 server and the
+injected client. It includes a deliberately minimal localhost
+`jav_config.local.template.ws`; **numeric applet parameters for
+revision 242 remain unverified, so this template is not a working
+login/world configuration**.
+
+**Security boundary:** A Java SecurityManager is only a Java-level
+socket guard, not a complete process/OS network sandbox. Native
+networking, child processes and external programs require separate
+OS-level isolation (e.g. a dedicated VM with outbound network denied).
+No account login is authorized or implemented. Reconstructing a
+complete local world directory, authentication and login service
+is the next development task after proving client-config isolation.
