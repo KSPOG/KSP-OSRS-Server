@@ -236,13 +236,14 @@ try {
     if (Test-Path -LiteralPath $clientLog) {
         $clientLines = @(Get-Content -LiteralPath $clientLog)
         Write-Host "Client JS5/GPU evidence:"
-        $clientLines | Where-Object { $_ -match "KSP_JS5_GPU_DISABLED|GpuPlugin - Using device|error_game_js5connect|KSP_JS5_GAMEPACK|BUILD FAILED" } | Select-Object -Last 45
+        $clientLines | Where-Object { $_ -match "KSP_JS5_GPU_DISABLED|KSP_JS5_LOOPBACK_GUARD_ACTIVE|KSP_JS5_NONLOCAL_SOCKET_BLOCKED|KSP_JS5_LOCAL_CONFIG_ACCEPTED|GpuPlugin - Using device|error_game_js5connect|KSP_JS5_GAMEPACK|BUILD FAILED" } | Select-Object -Last 45
         if ($clientLines -match "GpuPlugin - Using device") {
             Write-Warning "GPU was initialized despite the isolated safe-mode setting; inspect client log."
         }
     }
     Write-Host "Client diagnostic log: $clientLog"
-    Write-Host "Look for KSP_JS5_GAMEPACK_CODEBASE and KSP_JS5_GAMEPACK_PARAM in the client log."
+    Write-Host "Look for KSP_JS5_LOOPBACK_GUARD_ACTIVE and KSP_JS5_LOCAL_CONFIG_ACCEPTED in the client log."
+    Write-Host "This Java-level guard does not isolate native sockets or child processes."
     Write-Host "Client acceptance, successful cache loading and world login remain UNVERIFIED until tested."
 } finally {
     if ($serverProc) {
