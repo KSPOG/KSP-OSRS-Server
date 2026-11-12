@@ -47,3 +47,23 @@ jobs:
       - name: Python localhost capture proxy regression tests
         run: python3 -m unittest -v test_js5_master_capture_proxy.py
         working-directory: server/tools
+
+      - name: Validate PowerShell JS5 cross-branch runner syntax
+        shell: pwsh
+        working-directory: server/tools
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = @('test-js5-client-branch.ps1', 'prepare-js5-client-probe.ps1')
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path (Get-Location) $file),
+              [ref]$tokens, [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.ToString() }
+              throw "PowerShell syntax failed: $file"
+            }
+            Write-Host "PowerShell syntax PASS: $file"
+          }
