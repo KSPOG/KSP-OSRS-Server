@@ -1,0 +1,55 @@
+name: JS5 native gamepack loopback acceptance (no login)
+
+on:
+  pull_request:
+    branches: [client]
+    paths:
+      - 'Microbot-main/runelite-client/**'
+      - '.github/scripts/js5_gamepack_headless_probe.py'
+      - '.github/workflows/client-js5-native-probe-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build injected Microbot client before network isolation
+        shell: bash
+        working-directory: Microbot-main
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew :client:compileJava --no-daemon --console=plain
+      - name: Verify isolated GUI/network tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v Xvfb >/dev/null || ! command -v ip >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb iproute2
+          fi
+          command -v Xvfb
+          command -v ip
+          command -v unshare
+          command -v runuser
+          python3 -m py_compile .github/scripts/js5_gamepack_headless_probe.py
+      - name: Native gamepack handshake against loopback-only network namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          Xvfb :99 -screen 0 1280x720x24 -nolisten tcp > /tmp/ksp-xvfb.log 2>&1 &
+          xvfb_pid=$!
+          trap 'kill "$xvfb_pid" 2>/dev/null || true' EXIT
+          sleep 2
+          # Do not permit fallback if the OS namespace cannot be created.
+          # No default network interfaces exist inside this namespace.
+          sudo unshare --net -- bash -c "set -euo pipefail; ip link set lo up; runuser -u $(id -un) -- env HOME=$HOME DISPLAY=:99 python3 '$PWD/.github/scripts/js5_gamepack_headless_probe.py'"
