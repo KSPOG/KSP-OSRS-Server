@@ -16,7 +16,7 @@ param(
     [switch]$Listen
 )
 $ErrorActionPreference = "Stop"
-$commit = "1ac4091ee1564268d0d138d7c9af810de77b22be"
+$commit = "4fb1f35f716467ca4f2a8dae8cfe9bb0b37cffe3"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not $Cache) {
     $Cache = Join-Path $Repo "server\cache-validation\openrs2-2757\extracted\cache"
@@ -42,7 +42,8 @@ $files = @(
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5HandshakeDiagnosticServer.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5VerifiedMasterProbe.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5VerifiedMasterProbeAudit.java",
-    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5VerifiedMasterProbeTest.java"
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5VerifiedMasterProbeTest.java",
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5ProbeAcceptTimeoutTest.java"
 )
 $stage = Join-Path $env:TEMP ("ksp-js5-probe-stage-" + [guid]::NewGuid().ToString("N"))
 $backup = Join-Path $Repo ("js5-probe-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
@@ -82,7 +83,7 @@ if (-not $exe) {
     }
 }
 if (-not $exe) { throw "Gradle 8.8 not found." }
-& $exe -p $lab testJs5VerifiedMasterProbe --no-daemon
+& $exe -p $lab testJs5VerifiedMasterProbe testJs5ProbeAcceptTimeout --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Synthetic controlled probe validation failed" }
 & $exe -p $lab auditJs5VerifiedMasterProbe "-PcachePath=$Cache" "-ParchivedMasterPath=$ArchivedMaster" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Real-cache verified-master socket audit failed" }
