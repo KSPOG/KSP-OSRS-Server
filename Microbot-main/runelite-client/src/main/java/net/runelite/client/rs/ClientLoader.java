@@ -132,6 +132,7 @@ public class ClientLoader implements Supplier<Client>
             KspJs5GamepackProbeConfig.validateLocalConfig(
                 localProbe.getCodeBase(), localProbe.getClassLoaderProperties(),
                 localProbe.getAppletProperties());
+            KspJs5GamepackProbeConfig.reportLocalConfigSummary(localProbe.getAppletProperties());
             log.info("KSP_JS5_LOCAL_CONFIG_ACCEPTED | origin=loopback noOfficialFallback=true");
             return localProbe;
         }
