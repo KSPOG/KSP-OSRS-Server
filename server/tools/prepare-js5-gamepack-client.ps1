@@ -16,7 +16,7 @@ param(
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "5d1f2d8d9f0809ef4ee3e526d83d065abebcf2b8"
+$clientCommit = "f08b0047cef9212e6274c4947340f80657a9bc9e"
 $serverCommit = "674d2f5e26a08718df7c0c18a3df201d5cd68679"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
@@ -28,6 +28,7 @@ $stage = Join-Path $env:TEMP ("ksp-client-stage-" + [guid]::NewGuid().ToString("
 $master = Join-Path $Repo "server\cache-validation\openrs2-2757\external-master-255-255.dat"
 $expectedMaster = "a5ab2044f9845e7beffa3bc8a338f0bd21a1156ba1819a438378c4f2d8328e38"
 $files = @(
+    "runelite-client/build.gradle.kts",
     "runelite-client/src/main/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfig.java",
     "runelite-client/src/main/java/net/runelite/client/plugins/microbot/MicrobotRSAppletStub.java",
     "runelite-client/src/main/java/net/runelite/client/rs/RSAppletStub.java",
@@ -112,17 +113,14 @@ $serverOut = Join-Path $runRoot "server.log"
 $serverErr = Join-Path $runRoot "server.err"
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/prepare-js5-client-probe.ps1" -OutFile $serverScript -UseBasicParsing
 $launcher = @'
-param([string]$ClientRoot, [string]$LogPath, [int]$Port)
-$env:KSP_OSRS_JS5_GAMEPACK_PROBE = 'true'
-$env:KSP_OSRS_JS5_PROBE_PORT = $Port.ToString()
-$env:KSP_OSRS_PRIVATE_SERVER = 'false'
-$env:KSP_OSRS_LOG_REVISION = 'true'
+param([string]$ClientRoot, [string]$LogPath, [string]$ProfileRoot, [int]$Port)
 Set-Location -LiteralPath $ClientRoot
-Write-Host 'KSP gamepack probe mode: do not enter account credentials.'
-& (Join-Path $ClientRoot 'gradlew.bat') :client:run --no-daemon *>&1 |
+Write-Host 'KSP gamepack probe: isolated client profile, no automated authentication.'
+Write-Host 'Do not enter account credentials.'
+& (Join-Path $ClientRoot 'gradlew.bat') :client:runKspJs5GamepackProbe \
+    "-PkspJs5ProbePort=$Port" "-PkspJs5ProbeHome=$ProfileRoot" --no-daemon *>&1 |
     Tee-Object -FilePath $LogPath
-'@
-Set-Content -LiteralPath $launchScript -Value $launcher -Encoding UTF8
+'@Set-Content -LiteralPath $launchScript -Value $launcher -Encoding UTF8
 $serverProc = $null
 try {
     $serverProc = Start-Process -FilePath "powershell.exe" -PassThru -WindowStyle Hidden -ArgumentList @(
@@ -154,7 +152,8 @@ try {
     $clientLog = Join-Path $runRoot "client.log"
     Start-Process -FilePath "powershell.exe" -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", $launchScript,
-        "-ClientRoot", $ClientRoot, "-LogPath", $clientLog, "-Port", $Port
+        "-ClientRoot", $ClientRoot, "-LogPath", $clientLog,
+        "-ProfileRoot", (Join-Path $runRoot "isolated-client-home"), "-Port", $Port
     ) | Out-Null
     $serverProc.WaitForExit(210000) | Out-Null
     Write-Host "Server JS5 evidence:"
