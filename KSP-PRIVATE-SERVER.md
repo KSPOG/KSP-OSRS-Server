@@ -159,3 +159,45 @@ The isolated launch logs `KSP_JS5_GPU_DISABLED` after verifying that
 `PluginManager.isPluginEnabled(GpuPlugin)` is false. A GPU plugin absent due to safe mode is the expected state; any discovered
 GPU instance is explicitly disabled, and a still-enabled instance fails closed. No global GPU configuration is changed.
 The default software renderer is used for the diagnostic.
+
+## Strict local-only JS5 probe: configuration and Java sockets (2026-11-12)
+
+The previous gamepack test was **not actually private**: its loader still
+downloaded the official `jav_config` and official service URLs were available
+as numbered applet parameters. A successful native JS5 handshake by itself
+does **not** imply private login, world selection or network isolation.
+
+The experimental `KSP_OSRS_JS5_GAMEPACK_PROBE=true` profile now requires
+`KSP_OSRS_JS5_LOCAL_JAV_CONFIG_URL` to name a loopback HTTP URL with an
+explicit port (default for the dedicated Gradle task:
+`http://127.0.0.1:43595/jav_config.ws`). Both RuneLite and Microbot
+loaders fetch only this URL; they do **not** attempt their normal official
+jav_config, backup config or official world-list fallback. The response
+is rejected unless its applet codebase and URL-bearing parameters are
+loopback addresses and it contains no Jagex/RuneScape domain references.
+No service credentials are logged.
+
+The probe-only Java 21 launcher also installs `KspJs5LoopbackGuard`
+**before** RuneLite bootstrap. With the dedicated JVM option
+`-Djava.security.manager=allow`, its socket checks reject nonloopback
+destinations and print bounded `KSP_JS5_NONLOCAL_SOCKET_BLOCKED` events.
+`KSP_JS5_LOOPBACK_GUARD_ACTIVE` and
+`KSP_JS5_LOCAL_CONFIG_ACCEPTED` provide independent evidence of activation
+and local config acceptance. The existing `--safe-mode` still excludes
+the GPU plugin.
+
+**Boundary:** This Java guard intercepts Java SecurityManager socket
+checks; it does not make a process-wide or OS-level egress guarantee for
+JNI/native networking, subprocesses, OS background services or an
+external browser. If complete network isolation is required, run the
+test in a separate Windows VM with outbound traffic blocked except
+explicit loopback. Do not use normal login credentials.
+
+The server branch's `prepare-js5-gamepack-client.ps1` now starts a
+bounded local HTTP configuration service in addition to the pinned JS5
+cache server. By default it uses `jav_config.local.template.ws`,
+an intentionally **minimal and unverified** local config sufficient
+only for an initial loading experiment; production numeric applet
+parameter mappings are not yet reconstructed. Full login/gameplay are
+not expected from this fixture. A custom reviewed local config can be
+provided with `-LocalJavConfigPath`, but must not contain official URLs.
