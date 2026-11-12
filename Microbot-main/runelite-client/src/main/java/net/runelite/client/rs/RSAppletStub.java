@@ -30,6 +30,7 @@ import java.net.URL;
 import javax.swing.SwingUtilities;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.ClientConfiguration;
+import net.runelite.client.plugins.microbot.KspJs5GamepackProbeConfig;
 import net.runelite.client.RuntimeConfig;
 import net.runelite.client.RuntimeConfigLoader;
 import net.runelite.client.ui.FatalErrorDialog;
@@ -46,7 +47,7 @@ class RSAppletStub implements ClientConfiguration
 	{
 		try
 		{
-			return new URL(config.getCodeBase());
+			return KspJs5GamepackProbeConfig.codeBase(new URL(config.getCodeBase()));
 		}
 		catch (MalformedURLException ex)
 		{
@@ -57,7 +58,7 @@ class RSAppletStub implements ClientConfiguration
 	@Override
 	public String getParameter(String name)
 	{
-		return config.getAppletProperties().get(name);
+		return KspJs5GamepackProbeConfig.parameter(name, config.getAppletProperties().get(name));
 	}
 
 	@Override
