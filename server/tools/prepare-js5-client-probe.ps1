@@ -13,10 +13,11 @@ param(
     [string]$Cache = "",
     [string]$ArchivedMaster = "",
     [int]$Port = 43596,
-    [switch]$Listen
+    [switch]$Listen,
+    [switch]$ExtendedClientSession
 )
 $ErrorActionPreference = "Stop"
-$commit = "4fb1f35f716467ca4f2a8dae8cfe9bb0b37cffe3"
+$commit = "1b352242d81571fe18674eff3c5632ce6aaa22a6"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not $Cache) {
     $Cache = Join-Path $Repo "server\cache-validation\openrs2-2757\extracted\cache"
@@ -43,7 +44,8 @@ $files = @(
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5VerifiedMasterProbe.java",
     "server/protocol-lab/src/main/java/dev/ksp/osrs/protocol/Js5VerifiedMasterProbeAudit.java",
     "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5VerifiedMasterProbeTest.java",
-    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5ProbeAcceptTimeoutTest.java"
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5ProbeAcceptTimeoutTest.java",
+    "server/protocol-lab/src/test/java/dev/ksp/osrs/protocol/Js5ExtendedSessionTest.java"
 )
 $stage = Join-Path $env:TEMP ("ksp-js5-probe-stage-" + [guid]::NewGuid().ToString("N"))
 $backup = Join-Path $Repo ("js5-probe-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
@@ -83,7 +85,7 @@ if (-not $exe) {
     }
 }
 if (-not $exe) { throw "Gradle 8.8 not found." }
-& $exe -p $lab testJs5VerifiedMasterProbe testJs5ProbeAcceptTimeout --no-daemon
+& $exe -p $lab testJs5VerifiedMasterProbe testJs5ProbeAcceptTimeout testJs5ExtendedSession --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Synthetic controlled probe validation failed" }
 & $exe -p $lab auditJs5VerifiedMasterProbe "-PcachePath=$Cache" "-ParchivedMasterPath=$ArchivedMaster" --no-daemon
 if ($LASTEXITCODE -ne 0) { throw "Real-cache verified-master socket audit failed" }
@@ -91,7 +93,11 @@ Write-Host "VERIFIED_MASTER_PROBE_PREFLIGHT_PASSED"
 if ($Listen) {
     Write-Host "Explicit localhost-only session; client JS5 endpoint must point to 127.0.0.1:$Port"
     Write-Host "Accept timeout 180s, request idle timeout 7s; one connection only."
-    & $exe -p $lab runJs5VerifiedMasterProbe "-PcachePath=$Cache" "-ParchivedMasterPath=$ArchivedMaster" "-PprobePort=$Port" "-PconfirmLocalProbe=true" --no-daemon
+    if ($ExtendedClientSession) {
+        Write-Host "Extended native gamepack session: max 8192 requests, max session 10 minutes."
+    }
+    $extended = if ($ExtendedClientSession) { "true" } else { "false" }
+    & $exe -p $lab runJs5VerifiedMasterProbe "-PcachePath=$Cache" "-ParchivedMasterPath=$ArchivedMaster" "-PprobePort=$Port" "-PconfirmLocalProbe=true" "-PextendedJs5Session=$extended" --no-daemon
     if ($LASTEXITCODE -ne 0) { throw "Controlled probe failed; review console output" }
 } else {
     Write-Host "No listener started. Pass -Listen only when ready for a controlled local client connection."
