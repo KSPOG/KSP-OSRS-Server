@@ -51,7 +51,10 @@ jobs:
           reference_url = "https://archive.openrs2.org/caches/runescape/2757/archives/255/groups/4.dat"
           with urlopen(reference_url, timeout=30) as response:
               reference = response.read(4 * 1024 * 1024 + 1)
-          expected_crc = struct.unpack(">I", raw[5 + 4 * 4:9 + 4 * 4])[0]
+          if raw[:5] != bytes((0, 0, 0, 0, 200)):
+              raise SystemExit("Invalid revision-242 master header")
+          # 200 payload bytes: 25 entries, each CRC32 + 32-bit revision.
+          expected_crc = struct.unpack(">I", raw[5 + 4 * 8:9 + 4 * 8])[0]
           actual_crc = zlib.crc32(reference) & 0xFFFFFFFF
           if not 5 <= len(reference) <= 4 * 1024 * 1024 or actual_crc != expected_crc:
               raise SystemExit("Refusing OpenRS2 255/4 reference: master-index CRC mismatch")
