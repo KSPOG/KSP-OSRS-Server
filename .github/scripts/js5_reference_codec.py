@@ -62,7 +62,7 @@ class Reader:
         return struct.unpack(">I", self.get(4))[0]
 
     def number(self, protocol: int) -> int:
-        if protocol < 7 or self.data[self.pos:self.pos + 1] < b"\\x80":
+        if protocol < 7 or self.data[self.pos:self.pos + 1] < bytes((128,)):
             return self.u16()
         return self.u32() & 0x7FFFFFFF
 
