@@ -54,8 +54,15 @@ public final class Js5HandshakeDiagnosticServer {
         if (!listener.getInetAddress().isLoopbackAddress())
             throw new IOException("Refusing non-loopback listener");
         listener.setSoTimeout(acceptTimeoutMs);
-        try (var provider = new VerifiedJs5GroupProvider(cache);
-             Socket client = listener.accept()) {
+        // A missing client is an expected diagnostic outcome, not a server crash.
+        Socket accepted;
+        try {
+            accepted = listener.accept();
+        } catch (SocketTimeoutException timeout) {
+            return new Report(false, 0, 0, 0, "NO_CLIENT_CONNECTED");
+        }
+        try (Socket client = accepted;
+             var provider = new VerifiedJs5GroupProvider(cache)) {
             if (!client.getInetAddress().isLoopbackAddress())
                 throw new IOException("Refusing non-loopback client");
             client.setSoTimeout(READ_TIMEOUT_MS);
