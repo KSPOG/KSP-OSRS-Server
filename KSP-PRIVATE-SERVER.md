@@ -148,12 +148,14 @@ JS5 port assignment.
 
 ### GPU renderer disabled in native JS5 test profile
 
-The isolated `:client:runKspJs5GamepackProbe` startup explicitly disables
+The isolated `:client:runKspJs5GamepackProbe` startup adds RuneLite's built-in
+`--safe-mode` argument. `GpuPlugin` declares `loadInSafeMode=false`, so it
+should not be discovered or started in that test profile. As a secondary
+safeguard, the startup explicitly disables
 the RuneLite `GpuPlugin` after core plugin configuration is loaded but
 **before** `PluginManager.startPlugins()`. The setting applies only when
 `KSP_OSRS_JS5_GAMEPACK_PROBE=true`, not to the normal Microbot profile.
 The isolated launch logs `KSP_JS5_GPU_DISABLED` after verifying that
-`PluginManager.isPluginEnabled(GpuPlugin)` is false. Missing or still-enabled
-GPU plugin state fails closed rather than attempting the controlled JS5
-test with hardware renderer enabled. No global GPU configuration is changed.
+`PluginManager.isPluginEnabled(GpuPlugin)` is false. A GPU plugin absent due to safe mode is the expected state; any discovered
+GPU instance is explicitly disabled, and a still-enabled instance fails closed. No global GPU configuration is changed.
 The default software renderer is used for the diagnostic.
