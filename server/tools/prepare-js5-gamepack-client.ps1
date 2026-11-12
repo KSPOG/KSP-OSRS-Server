@@ -16,7 +16,7 @@ param(
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "a206724fedd704ad22eeddeddc0d85844c3c3530"
+$clientCommit = "68214265471e80f764100dbe0cc02ce50885b393"
 $serverCommit = "8484c8bdd8932dd046884d81bebdc0186adac40d"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
@@ -29,6 +29,7 @@ $master = Join-Path $Repo "server\cache-validation\openrs2-2757\external-master-
 $expectedMaster = "a5ab2044f9845e7beffa3bc8a338f0bd21a1156ba1819a438378c4f2d8328e38"
 $files = @(
     "runelite-client/build.gradle.kts",
+    "runelite-client/src/main/java/net/runelite/client/RuneLite.java",
     "runelite-client/src/main/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfig.java",
     "runelite-client/src/main/java/net/runelite/client/plugins/microbot/MicrobotRSAppletStub.java",
     "runelite-client/src/main/java/net/runelite/client/rs/RSAppletStub.java",
