@@ -45,6 +45,13 @@ public final class KspJs5GamepackProbeConfigSmokeTest
         reject(true, false, "invalid");
         reject(true, false, "0");
         reject(true, false, "65536");
+        check(KspJs5LoopbackGuard.isLoopbackHost("127.0.0.1"), "Loopback IPv4 refused");
+        check(KspJs5LoopbackGuard.isLoopbackHost("::1"), "Loopback IPv6 refused");
+        check(!KspJs5LoopbackGuard.isLoopbackHost("oldschool.runescape.com"),
+            "Official RuneScape host permitted by guard");
+        check(!KspJs5LoopbackGuard.isLoopbackHost("192.168.1.1"),
+            "Nonloopback private LAN host permitted by guard");
+        check(!KspJs5LoopbackGuard.isLoopbackHost(null), "Null socket host permitted");
         check("http://127.0.0.1:43595/jav_config.ws".equals(
             KspJs5GamepackProbeConfig.requireLocalJavConfigUrl(
                 "http://127.0.0.1:43595/jav_config.ws")), "Loopback configuration refused");
