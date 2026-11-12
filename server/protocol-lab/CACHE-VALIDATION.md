@@ -561,3 +561,28 @@ response and exercises revision-242 initialization plus XOR response
 framing. It does not modify the real game client's networking or
 prove injected gamepack acceptance. The real client connection gate
 remains open.
+
+## Cross-branch smoke runner shutdown verification (2026-11-12)
+
+The Windows cross-branch runner previously tested whether the *wrapping*
+Gradle/PowerShell process exited within 15 seconds after the Java socket
+client had completed. This could cause the generic
+`Server did not finish a clean one-session diagnostic` error even after
+a valid response, because Gradle may still be completing shutdown.
+The runner now waits up to 90 seconds **after client completion**, then
+requires the single-server session report to show
+`handshakeAccepted=true`, `requests=3`, `responses=2`,
+`termination=CLIENT_CLOSED`, *and* a clean wrapper exit.
+It preserves complete stdout/stderr and prints useful tails if either
+protocol verification or process completion fails. It does not treat
+a successful client-side check alone as proof of a clean server run.
+
+To use the corrected Git-free runner, download the newest
+`server/tools/test-js5-client-branch.ps1` and invoke it directly
+without manually launching a separate listener. The existing SHA-256
+archive pin, loopback-only binding, local-cache admission, request
+limits and client branch selection are preserved.
+
+The smoke still uses a **standalone client-branch socket tester**,
+not the real injected game client. Therefore real gamepack JS5
+acceptance and game login remain unverified.
