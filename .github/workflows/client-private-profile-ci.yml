@@ -2,6 +2,8 @@ name: Microbot private profile smoke tests
 on:
   push:
     branches: [client]
+  pull_request:
+    branches: [client]
   workflow_dispatch:
 jobs:
   test:
