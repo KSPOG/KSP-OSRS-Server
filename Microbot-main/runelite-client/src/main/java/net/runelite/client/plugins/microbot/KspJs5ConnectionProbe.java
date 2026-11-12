@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.Arrays;
-import java.util.HexFormat;
 
 /**
  * Explicit one-shot JS5 transport diagnostic in the Microbot CLIENT branch.
@@ -21,6 +20,19 @@ public final class KspJs5ConnectionProbe
 {
     private static final String PIN = "a5ab2044f9845e7beffa3bc8a338f0bd21a1156ba1819a438378c4f2d8328e38";
     private KspJs5ConnectionProbe() {}
+
+    private static String toHex(byte[] hash)
+    {
+        final char[] digits = "0123456789abcdef".toCharArray();
+        char[] out = new char[hash.length * 2];
+        for (int i = 0; i < hash.length; i++)
+        {
+            int value = hash[i] & 255;
+            out[2 * i] = digits[value >>> 4];
+            out[2 * i + 1] = digits[value & 15];
+        }
+        return new String(out);
+    }
 
     public static void main(String[] args) throws Exception
     {
@@ -34,7 +46,7 @@ public final class KspJs5ConnectionProbe
             || Files.size(archived) != 205)
             throw new IOException("Refusing missing, symbolic-link or incorrectly sized master");
         byte[] master = Files.readAllBytes(archived);
-        String fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(master));
+        String fingerprint = toHex(MessageDigest.getInstance("SHA-256").digest(master));
         if (!PIN.equals(fingerprint))
             throw new IOException("OpenRS2 revision-242 archived master fingerprint does not match");
         try (Socket socket = new Socket())
