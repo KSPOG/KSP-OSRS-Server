@@ -45,6 +45,33 @@ public final class KspJs5GamepackProbeConfigSmokeTest
         reject(true, false, "invalid");
         reject(true, false, "0");
         reject(true, false, "65536");
+        check("http://127.0.0.1:43595/jav_config.ws".equals(
+            KspJs5GamepackProbeConfig.requireLocalJavConfigUrl(
+                "http://127.0.0.1:43595/jav_config.ws")), "Loopback configuration refused");
+        boolean blocked = false;
+        try {
+            KspJs5GamepackProbeConfig.requireLocalJavConfigUrl(
+                "https://oldschool.runescape.com/jav_config.ws");
+        } catch (IllegalArgumentException expected) { blocked = true; }
+        check(blocked, "Official configuration URL was accepted");
+        blocked = false;
+        try {
+            KspJs5GamepackProbeConfig.requireLocalJavConfigUrl(null);
+        } catch (IllegalArgumentException expected) { blocked = true; }
+        check(blocked, "Missing local configuration URL was accepted");
+        blocked = false;
+        try {
+            KspJs5GamepackProbeConfig.validateLocalConfig(
+                "http://127.0.0.1:43594/",
+                java.util.Map.of("initial_class", "client.class"),
+                java.util.Map.of("11", "https://auth.jagex.com/"));
+        } catch (IllegalArgumentException expected) { blocked = true; }
+        check(blocked, "Production authentication endpoint was accepted");
+        KspJs5GamepackProbeConfig.validateLocalConfig(
+            "http://127.0.0.1:43594/",
+            java.util.Map.of("initial_class", "client.class"),
+            java.util.Map.of("11", "http://127.0.0.1:43595/"));
+
         check("127.0.0.1".equals(
             KspJs5GamepackProbeConfig.resolveParameter("server", "world.example", 43596)),
             "Server not redirected");
