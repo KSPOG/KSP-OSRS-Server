@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x ./gradlew
-          ./gradlew :client:compileJava --no-daemon --console=plain
+          ./gradlew :client:compileJava :client:primeKspJs5RuntimeClasspath --no-daemon --console=plain
       - name: Verify isolated GUI/network tooling
         shell: bash
         run: |
