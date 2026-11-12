@@ -16,7 +16,7 @@ public final class KspJs5GamepackProbeConfig
     private static final String ENABLE_FLAG = "KSP_OSRS_JS5_GAMEPACK_PROBE";
     private static final String PORT_FLAG = "KSP_OSRS_JS5_PROBE_PORT";
     private static final String HOST = "127.0.0.1";
-    private static final int DEFAULT_PORT = 43596;
+    private static final int DEFAULT_PORT = 43594;
 
     private KspJs5GamepackProbeConfig() {}
 
