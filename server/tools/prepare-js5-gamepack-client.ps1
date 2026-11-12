@@ -13,12 +13,17 @@ param(
     [string]$Repo = "D:\Users\Proje\Documents\GitHub\KSP-OSRS-Server",
     [string]$ClientRoot = "",
     [int]$Port = 43594,
+    [int]$LocalConfigPort = 43595,
+    [string]$LocalJavConfigPath = "",
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "97ea1f610abda355881d350ed10df3bcb5edcba5"
-$serverCommit = "b46a58645e9f171c42fe753d46f29aa4dd8acf5c"
+$clientCommit = "547b12704c6b109d2078a97ea1e657468d2ce99c"
+$serverCommit = "8b224b264ca18dab1997aef7b1b3aa22fe161fd6"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
+if ($LocalConfigPort -lt 1 -or $LocalConfigPort -gt 65535 -or $LocalConfigPort -eq $Port) {
+    throw "Local jav_config port must be valid and different from JS5 port"
+}
 if (-not $ClientRoot) {
     $ClientRoot = Join-Path $Repo "client-gamepack-probe\Microbot-main"
 }
@@ -105,28 +110,62 @@ if (-not $LaunchClient) {
     return
 }
 Write-Host "KSP_JS5_PORT_CHECK port=$Port"
-if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
-    throw "Port $Port is already in use by a listener; close it before the controlled test"
+if ((Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) -or
+    (Get-NetTCPConnection -LocalPort $LocalConfigPort -State Listen -ErrorAction SilentlyContinue)) {
+    throw "JS5 or local jav_config port is already in use; stop the earlier test first"
 }
 $runRoot = Join-Path $env:TEMP ("ksp-gamepack-probe-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
 $serverScript = Join-Path $runRoot "prepare-js5-client-probe.ps1"
+$localScript = Join-Path $runRoot "serve-js5-local-jav-config.ps1"
+$localConfig = if ($LocalJavConfigPath) { $LocalJavConfigPath } else { Join-Path $runRoot "jav_config.local.template.ws" }
+$localOut = Join-Path $runRoot "local-config.log"
+$localErr = Join-Path $runRoot "local-config.err"
 $launchScript = Join-Path $runRoot "launch-client.ps1"
 $serverOut = Join-Path $runRoot "server.log"
 $serverErr = Join-Path $runRoot "server.err"
 Write-Host "KSP_JS5_SERVER_PREP downloadingPinnedProbe=true"
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/prepare-js5-client-probe.ps1" -OutFile $serverScript -UseBasicParsing -TimeoutSec 45
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/serve-js5-local-jav-config.ps1" -OutFile $localScript -UseBasicParsing -TimeoutSec 45
+if (-not $LocalJavConfigPath) {
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/jav_config.local.template.ws" -OutFile $localConfig -UseBasicParsing -TimeoutSec 45
+    Write-Warning "Using minimal unverified local configuration template. Only JS5 transport can be tested; game startup/login is not expected to work."
+}
 $launcher = @'
-param([string]$ClientRoot, [string]$LogPath, [string]$ProfileRoot, [int]$Port)
+param([string]$ClientRoot, [string]$LogPath, [string]$ProfileRoot, [int]$Port, [int]$LocalConfigPort)
 Set-Location -LiteralPath $ClientRoot
 Write-Host 'KSP gamepack probe: isolated client profile, no automated authentication.'
 Write-Host 'Do not enter account credentials.'
-& (Join-Path $ClientRoot 'gradlew.bat') :client:runKspJs5GamepackProbe "-PkspJs5ProbePort=$Port" "-PkspJs5ProbeHome=$ProfileRoot" --no-daemon *>&1 |
+& (Join-Path $ClientRoot 'gradlew.bat') :client:runKspJs5GamepackProbe "-PkspJs5ProbePort=$Port" "-PkspJs5ProbeHome=$ProfileRoot" "-PkspJs5LocalConfigUrl=http://127.0.0.1:$LocalConfigPort/jav_config.ws" --no-daemon *>&1 |
     Tee-Object -FilePath $LogPath
 '@
 Set-Content -LiteralPath $launchScript -Value $launcher -Encoding UTF8
 $serverProc = $null
+$localProc = $null
 try {
+    Write-Host "KSP_LOCAL_JAV_CONFIG_START port=$LocalConfigPort file=$localConfig"
+    $localProc = Start-Process -FilePath "powershell.exe" -PassThru -WindowStyle Hidden -ArgumentList @(
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $localScript,
+        "-ConfigPath", $localConfig, "-Port", $LocalConfigPort
+    ) -RedirectStandardOutput $localOut -RedirectStandardError $localErr
+    $localReady = $false
+    $localDeadline = (Get-Date).AddSeconds(12)
+    while ((Get-Date) -lt $localDeadline) {
+        if (Test-Path -LiteralPath $localOut) {
+            if ((Get-Content -LiteralPath $localOut -Raw -ErrorAction SilentlyContinue) -match "KSP_LOCAL_JAV_CONFIG_READY") {
+                $localReady = $true; break
+            }
+        }
+        $localProc.Refresh()
+        if ($localProc.HasExited) { break }
+        Start-Sleep -Milliseconds 150
+    }
+    if (-not $localReady) {
+        if (Test-Path -LiteralPath $localErr) { Get-Content -LiteralPath $localErr -Tail 25 }
+        throw "Loopback jav_config service failed to start; refusing gamepack test"
+    }
+    Write-Host "KSP_LOCAL_JAV_CONFIG_READY noOfficialConfigFallback=true"
+
     Write-Host "KSP_JS5_SERVER_START port=$Port"
     $serverProc = Start-Process -FilePath "powershell.exe" -PassThru -WindowStyle Hidden -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $serverScript,
@@ -158,7 +197,8 @@ try {
     $clientProc = Start-Process -FilePath "powershell.exe" -PassThru -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", $launchScript,
         "-ClientRoot", $ClientRoot, "-LogPath", $clientLog,
-        "-ProfileRoot", (Join-Path $runRoot "isolated-client-home"), "-Port", $Port
+        "-ProfileRoot", (Join-Path $runRoot "isolated-client-home"), "-Port", $Port,
+        "-LocalConfigPort", $LocalConfigPort
     )
     Write-Host "KSP_JS5_CLIENT_LAUNCH_REQUESTED processId=$($clientProc.Id) isolatedProfile=true"
     $until = (Get-Date).AddMinutes(22)
@@ -208,6 +248,12 @@ try {
         $serverProc.Refresh()
         if (-not $serverProc.HasExited) {
             Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if ($localProc) {
+        $localProc.Refresh()
+        if (-not $localProc.HasExited) {
+            Stop-Process -Id $localProc.Id -Force -ErrorAction SilentlyContinue
         }
     }
     Write-Host "Full captured server logs: $runRoot"
