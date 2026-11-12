@@ -48,20 +48,30 @@ jobs:
               raise SystemExit("Refusing unverified or oversized OpenRS2 2757 master")
           Path("/tmp/ksp-js5-master-255-255.dat").write_bytes(raw)
           print("KSP_JS5_MASTER_PIN_VERIFIED bytes=205 revision=242")
-          reference_url = "https://archive.openrs2.org/caches/runescape/2757/archives/255/groups/4.dat"
-          with urlopen(reference_url, timeout=30) as response:
-              reference = response.read(4 * 1024 * 1024 + 1)
           if raw[:5] != bytes((0, 0, 0, 0, 200)):
               raise SystemExit("Invalid revision-242 master header")
-          # 200 payload bytes: 25 entries, each CRC32 + 32-bit revision.
-          expected_crc = struct.unpack(">I", raw[5 + 4 * 8:9 + 4 * 8])[0]
-          actual_crc = zlib.crc32(reference) & 0xFFFFFFFF
-          if not 5 <= len(reference) <= 4 * 1024 * 1024 or actual_crc != expected_crc:
-              raise SystemExit("Refusing OpenRS2 255/4 reference: master-index CRC mismatch")
+          # Exactly 25 CRC32+revision entries are authenticated by the pinned master.
+          reference_root = "https://archive.openrs2.org/caches/runescape/2757/archives/255/groups"
           dest = Path("/tmp/ksp-js5-refs")
           dest.mkdir(mode=0o755, exist_ok=True)
-          (dest / "255-4.dat").write_bytes(reference)
-          print("KSP_JS5_REFERENCE4_CRC_VERIFIED bytes=" + str(len(reference)))
+          verified = []
+          for archive in range(25):
+              expected_crc = struct.unpack(">I", raw[5 + archive * 8:9 + archive * 8])[0]
+              if not expected_crc:
+                  continue
+              reference_url = reference_root + "/" + str(archive) + ".dat"
+              with urlopen(reference_url, timeout=30) as response:
+                  reference = response.read(4 * 1024 * 1024 + 1)
+              actual_crc = zlib.crc32(reference) & 0xFFFFFFFF
+              if not 5 <= len(reference) <= 4 * 1024 * 1024 or actual_crc != expected_crc:
+                  raise SystemExit("Refusing OpenRS2 255/" + str(archive)
+                                   + ": pinned master-index CRC mismatch")
+              (dest / ("255-" + str(archive) + ".dat")).write_bytes(reference)
+              verified.append(archive)
+          if not {4, 6}.issubset(verified):
+              raise SystemExit("Revision-242 reference groups 255/4 and 255/6 are required")
+          print("KSP_JS5_REFERENCE_TABLES_CRC_VERIFIED entries=" + str(len(verified))
+                + " archiveIds=" + ",".join(map(str, verified)))
           PY
       - name: Verify isolated GUI/network tooling
         shell: bash
