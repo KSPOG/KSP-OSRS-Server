@@ -82,6 +82,7 @@ import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.gpu.GpuPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.recovery.RecoveryPrompt;
@@ -526,6 +527,27 @@ public class RuneLite
 		// Plugins have provided their config, so set default config
 		// to main settings
 		pluginManager.loadDefaultPluginConfiguration(null);
+
+        // An isolated JS5 test must never start GPU rendering. Apply the
+        // change after plugin discovery/defaults, but BEFORE startPlugins().
+        // Normal Microbot sessions retain their existing GPU setting.
+        if ("true".equalsIgnoreCase(System.getenv("KSP_OSRS_JS5_GAMEPACK_PROBE")))
+        {
+            int disabledGpuPlugins = 0;
+            for (net.runelite.client.plugins.Plugin plugin : pluginManager.getPlugins())
+            {
+                if (plugin instanceof GpuPlugin)
+                {
+                    pluginManager.setPluginEnabled(plugin, false);
+                    disabledGpuPlugins++;
+                }
+            }
+            if (disabledGpuPlugins == 0)
+            {
+                throw new IllegalStateException("JS5 probe: GPU plugin was not found; cannot verify GPU is disabled");
+            }
+            log.info("KSP_JS5_GPU_DISABLED | probeOnly=true gpuPlugins={} softwareRenderer=true", disabledGpuPlugins);
+        }
 
 		// Start client session
 		clientSessionManager.start();
