@@ -539,6 +539,10 @@ public class RuneLite
                 if (plugin instanceof GpuPlugin)
                 {
                     pluginManager.setPluginEnabled(plugin, false);
+                    if (pluginManager.isPluginEnabled(plugin))
+                    {
+                        throw new IllegalStateException("JS5 probe: GPU plugin remained enabled");
+                    }
                     disabledGpuPlugins++;
                 }
             }
