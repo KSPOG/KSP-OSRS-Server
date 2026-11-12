@@ -52,12 +52,12 @@ def load_reference_groups(master: bytes) -> dict[int, bytes]:
         if not group_text.isdigit():
             raise RuntimeError("Unexpected reference group file name")
         group = int(group_text)
-        if group >= 50 or group in groups:
+        if group >= 25 or group in groups:
             raise RuntimeError("Unsupported or duplicate reference group")
         payload = item.read_bytes()
         if len(payload) < 5 or len(payload) > 4 * 1024 * 1024:
             raise RuntimeError("Archived reference table outside size limits")
-        expected_crc = struct.unpack(">I", master[5 + group * 4:9 + group * 4])[0]
+        expected_crc = struct.unpack(">I", master[5 + group * 8:9 + group * 8])[0]
         if zlib.crc32(payload) & 0xFFFFFFFF != expected_crc:
             raise RuntimeError("Reference group CRC does not match pinned 255/255 master")
         groups[group] = payload
