@@ -14,7 +14,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $serverScriptCommit = "219cbc0a4ce59b33024210ecf9308f3f9eb6134d"
-$clientCommit = "7154dd274e0386bccfe52fb2e0baa90d9ff1fca0"
+$clientCommit = "85da6d5f74b014152c89bbe9702052beeb0c1250"
 $master = Join-Path $Repo "server\cache-validation\openrs2-2757\external-master-255-255.dat"
 if (-not (Test-Path -LiteralPath $master -PathType Leaf)) {
     throw "Archived OpenRS2 255/255 master not found: $master"
