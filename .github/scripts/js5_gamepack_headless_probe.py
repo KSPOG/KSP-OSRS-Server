@@ -104,8 +104,8 @@ def load_verified_assets(reference_groups: dict[int, bytes]) -> dict[tuple[int, 
             raise RuntimeError("Duplicate JS5 asset fixture")
         data = file.read_bytes()
         assets[archive, group] = verified_group_payload(data, *expected)
-    if (4, 0) not in assets or (4, 199) not in assets:
-        raise RuntimeError("Missing verified JS5 asset fixtures 4/0 and 4/199")
+    if (4, 0) not in assets or (4, 199) not in assets or (17, 1) not in assets:
+        raise RuntimeError("Missing verified JS5 assets 4/0, 4/199 or 17/1")
     return assets
 
 def read_packet(connection: socket.socket, size: int) -> bytes:
@@ -210,6 +210,7 @@ class Js5Handler(socketserver.BaseRequestHandler):
                     print("KSP_JS5_NATIVE_VERIFIED_REFERENCE_DELIVERED group="
                           + str(group) + " bytes=" + str(len(frame)), flush=True)
                 else:
+                    self.server.any_asset_delivered.set()
                     if archive == 4 and group == 0:
                         self.server.asset0_delivered.set()
                     if archive == 4 and group == 199:
@@ -242,6 +243,7 @@ def main() -> int:
             js5_server.master_delivered = threading.Event()
             js5_server.reference4_delivered = threading.Event()
             js5_server.reference6_delivered = threading.Event()
+            js5_server.any_asset_delivered = threading.Event()
             js5_server.asset0_delivered = threading.Event()
             js5_server.asset199_delivered = threading.Event()
             js5_server.master_data = master
@@ -302,6 +304,7 @@ def main() -> int:
                 master_ok = js5_server.master_delivered.is_set()
                 reference_ok = js5_server.reference4_delivered.is_set()
                 reference6_ok = js5_server.reference6_delivered.is_set()
+                any_asset_ok = js5_server.any_asset_delivered.is_set()
                 asset0_ok = js5_server.asset0_delivered.is_set()
                 asset199_ok = js5_server.asset199_delivered.is_set()
                 crash = 'Cannot read field "al" because "rd.gr" is null' in captured
@@ -312,6 +315,7 @@ def main() -> int:
                     + " pinnedMasterDelivered=" + str(master_ok).lower()
                     + " reference4Delivered=" + str(reference_ok).lower()
                     + " reference6Delivered=" + str(reference6_ok).lower()
+                    + " anyVerifiedAssetDelivered=" + str(any_asset_ok).lower()
                     + " asset4_0Delivered=" + str(asset0_ok).lower()
                     + " asset4_199Delivered=" + str(asset199_ok).lower()
                     + " priorNpe=" + str(crash).lower(),
@@ -319,7 +323,7 @@ def main() -> int:
                 )
                 if (not config_ok or crash or not native_ok or not requested
                         or not master_ok or not reference_ok or not reference6_ok
-                        or not asset0_ok or not asset199_ok):
+                        or not any_asset_ok):
                     return 1
                 return 0
 
