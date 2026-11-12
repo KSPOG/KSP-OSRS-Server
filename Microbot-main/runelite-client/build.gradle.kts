@@ -696,6 +696,9 @@ tasks.register<JavaExec>("runKspJs5GamepackProbe") {
     description = "Launch actual injected client with isolated no-account profile and explicit loopback JS5 hints."
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("net.runelite.client.RuneLite")
+    // RuneLite built-in safe mode excludes GpuPlugin (loadInSafeMode=false).
+    // Only this dedicated diagnostic launch task uses safe mode.
+    args("--safe-mode")
 
     val portText = providers.gradleProperty("kspJs5ProbePort").getOrElse("43594")
     val port = portText.toIntOrNull()
