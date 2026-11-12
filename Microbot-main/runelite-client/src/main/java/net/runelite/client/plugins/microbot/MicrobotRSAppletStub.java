@@ -47,7 +47,7 @@ class MicrobotRSAppletStub implements ClientConfiguration
 	{
 		try
 		{
-			return new URL(config.getCodeBase());
+			return KspJs5GamepackProbeConfig.codeBase(new URL(config.getCodeBase()));
 		}
 		catch (MalformedURLException ex)
 		{
@@ -58,7 +58,7 @@ class MicrobotRSAppletStub implements ClientConfiguration
 	@Override
 	public String getParameter(String name)
 	{
-		return config.getAppletProperties().get(name);
+		return KspJs5GamepackProbeConfig.parameter(name, config.getAppletProperties().get(name));
 	}
 
 	@Override
