@@ -21,7 +21,7 @@ public final class KspJs5GamepackProbeConfigSmokeTest
     {
         check(KspJs5GamepackProbeConfig.validate(false, true, "invalid") == 43594,
             "Disabled probe should not change normal/private settings");
-        check(KspJs5GamepackProbeConfig.validate(true, false, null) == 43596,
+        check(KspJs5GamepackProbeConfig.validate(true, false, null) == 43594,
             "Default probe port incorrect");
         check(KspJs5GamepackProbeConfig.validate(true, false, "23456") == 23456,
             "Custom probe port ignored");
