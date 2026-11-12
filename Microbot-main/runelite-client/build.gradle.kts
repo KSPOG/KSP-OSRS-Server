@@ -675,3 +675,18 @@ tasks.withType<Test> {
 tasks.javadoc {
     title = "RuneLite Client ${project.version} API"
 }
+
+tasks.register<JavaExec>("probeKspJs5Connection") {
+    group = "verification"
+    description = "Explicit client-branch standalone JS5 transport smoke test (NOT injected game client)."
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("net.runelite.client.plugins.microbot.KspJs5ConnectionProbe")
+    doFirst {
+        val archived = providers.gradleProperty("archivedMasterPath").orNull
+        require(!archived.isNullOrBlank()) {
+            "Provide -ParchivedMasterPath=<independent-OpenRS2-255-255.dat>"
+        }
+        args(archived)
+    }
+}
