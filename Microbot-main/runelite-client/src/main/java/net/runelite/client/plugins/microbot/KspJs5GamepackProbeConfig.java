@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,6 +19,7 @@ public final class KspJs5GamepackProbeConfig
 {
     private static final String ENABLE_FLAG = "KSP_OSRS_JS5_GAMEPACK_PROBE";
     private static final String PORT_FLAG = "KSP_OSRS_JS5_PROBE_PORT";
+    private static final String CONFIG_FLAG = "KSP_OSRS_JS5_LOCAL_JAV_CONFIG_URL";
     private static final String HOST = "127.0.0.1";
     private static final int DEFAULT_PORT = 43594;
     private static final Set<String> REPORTED = ConcurrentHashMap.newKeySet();
@@ -26,6 +29,50 @@ public final class KspJs5GamepackProbeConfig
     public static boolean enabled()
     {
         return "true".equalsIgnoreCase(System.getenv(ENABLE_FLAG));
+    }
+
+    /**
+     * Strict opt-in network boundary for the JS5-only probe: never fetch
+     * production jav_config or use its official backup/world fallback.
+     * Caller must supply a separate local HTTP configuration service.
+     * This is NOT a process-wide network sandbox: gamepack/other plugins
+     * may use additional endpoints, which must be audited independently.
+     */
+    public static String localJavConfigUrl()
+    {
+        if (!enabled())
+        {
+            return null;
+        }
+        return requireLocalJavConfigUrl(System.getenv(CONFIG_FLAG));
+    }
+
+    public static String requireLocalJavConfigUrl(String address)
+    {
+        if (address == null || address.isBlank())
+        {
+            throw new IllegalArgumentException(
+                "JS5 probe refuses official jav_config. Set KSP_OSRS_JS5_LOCAL_JAV_CONFIG_URL to a loopback HTTP config service.");
+        }
+        try
+        {
+            URI uri = new URI(address);
+            String host = uri.getHost();
+            if (!"http".equalsIgnoreCase(uri.getScheme())
+                || uri.getRawUserInfo() != null
+                || host == null
+                || !("127.0.0.1".equals(host) || "localhost".equalsIgnoreCase(host))
+                || uri.getPort() < 1
+                || uri.getFragment() != null)
+            {
+                throw new IllegalArgumentException("JS5 local jav_config URL must be loopback HTTP with an explicit port");
+            }
+            return uri.toString();
+        }
+        catch (URISyntaxException invalid)
+        {
+            throw new IllegalArgumentException("Malformed JS5 local jav_config URL", invalid);
+        }
     }
 
     public static void validateConfiguration()
