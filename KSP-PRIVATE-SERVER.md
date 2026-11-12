@@ -120,3 +120,28 @@ The next Windows run must establish whether the **injected gamepack**
 actually sends an opcode-15 revision-242 request to the loopback JS5
 listener. Until such network evidence exists, native client acceptance
 remains UNVERIFIED.
+
+### Isolated native-client JS5 probe launcher
+
+`Microbot-main/runelite-client/build.gradle.kts` now includes
+`:client:runKspJs5GamepackProbe`. Unlike `:client:run`, this launch
+task uses a dedicated `-Duser.home` directory and explicitly sets
+`KSP_OSRS_JS5_GAMEPACK_PROBE=true`,
+`KSP_OSRS_JS5_PROBE_PORT=43594`,
+`KSP_OSRS_PRIVATE_SERVER=false`, and
+`KSP_OSRS_LOG_REVISION=true`. The dedicated home avoids reusing
+the normal RuneLite client profile and stored account settings.
+No account credentials should be entered.
+
+The corresponding server-branch Git-free launcher
+`server/tools/prepare-js5-gamepack-client.ps1` compiles the actual
+client in its own checkout before starting network diagnostics.
+`-LaunchClient` then starts a *separate* pinned local JS5 server
+and the isolated client launcher. The server capture includes
+`JS5_HANDSHAKE_ACCEPTED` if a socket handshake occurs; one-time
+`KSP_JS5_GAMEPACK_CODEBASE`/`KSP_JS5_GAMEPACK_PARAM` log lines
+indicate whether the injected gamepack queried those applet values.
+An absent connection is an expected diagnostic result, not a successful
+client protocol test. Port 43594 is a hypothesis informed by documented
+default OSRS game-server behavior, not a verified revision-242 native
+JS5 port assignment.
