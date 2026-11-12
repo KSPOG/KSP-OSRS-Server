@@ -29,6 +29,24 @@ jobs:
           set -euo pipefail
           chmod +x ./gradlew
           ./gradlew :client:compileJava :client:primeKspJs5RuntimeClasspath --no-daemon --console=plain
+      - name: Fetch and pin independent OpenRS2 revision-242 master
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from urllib.request import urlopen
+
+          source = "https://archive.openrs2.org/caches/runescape/2757/archives/255/groups/255.dat"
+          expected = "a5ab2044f9845e7beffa3bc8a338f0bd21a1156ba1819a438378c4f2d8328e38"
+          with urlopen(source, timeout=30) as response:
+              raw = response.read(206)
+          if len(raw) != 205 or hashlib.sha256(raw).hexdigest() != expected:
+              raise SystemExit("Refusing unverified or oversized OpenRS2 2757 master")
+          Path("/tmp/ksp-js5-master-255-255.dat").write_bytes(raw)
+          print("KSP_JS5_MASTER_PIN_VERIFIED bytes=205 revision=242")
+          PY
       - name: Verify isolated GUI/network tooling
         shell: bash
         run: |
@@ -52,4 +70,4 @@ jobs:
           sleep 2
           # Do not permit fallback if the OS namespace cannot be created.
           # No default network interfaces exist inside this namespace.
-          sudo unshare --net -- bash -c "set -euo pipefail; ip link set lo up; runuser -u $(id -un) -- env HOME=$HOME DISPLAY=:99 python3 '$PWD/.github/scripts/js5_gamepack_headless_probe.py'"
+          sudo unshare --net -- bash -c "set -euo pipefail; ip link set lo up; runuser -u $(id -un) -- env HOME=$HOME DISPLAY=:99 KSP_JS5_MASTER_FILE=/tmp/ksp-js5-master-255-255.dat python3 '$PWD/.github/scripts/js5_gamepack_headless_probe.py'"
