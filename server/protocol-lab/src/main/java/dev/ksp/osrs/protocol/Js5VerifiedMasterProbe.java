@@ -70,6 +70,14 @@ public final class Js5VerifiedMasterProbe {
                 + " responses=" + report.responses()
                 + " responseBytes=" + report.responseBytes()
                 + " termination=" + report.termination());
+            if ("NO_CLIENT_CONNECTED".equals(report.termination())) {
+                System.out.println("JS5_NO_CLIENT_CONNECTED: no TCP client arrived during the bounded listen window.");
+                System.out.println("Check the CLIENT's JS5 endpoint; opening the probe alone cannot launch or redirect it.");
+            } else if (!report.handshakeAccepted()) {
+                System.out.println("JS5_CLIENT_CONNECTION_INCOMPLETE: no valid revision-242 handshake observed.");
+            } else {
+                System.out.println("JS5_HANDSHAKE_OBSERVED: actual client identity/acceptance still needs verification.");
+            }
             System.out.println("Client signature acceptance, account login and game world: UNVERIFIED");
         }
     }
