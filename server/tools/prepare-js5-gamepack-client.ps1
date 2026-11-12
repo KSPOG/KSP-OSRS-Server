@@ -16,7 +16,7 @@ param(
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "68214265471e80f764100dbe0cc02ce50885b393"
+$clientCommit = "97ea1f610abda355881d350ed10df3bcb5edcba5"
 $serverCommit = "8484c8bdd8932dd046884d81bebdc0186adac40d"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
@@ -191,6 +191,14 @@ try {
         Write-Host "KSP_JS5_GAMEPACK_SOCKET_OBSERVED: review client logs to establish the originating process."
     } else {
         Write-Host "KSP_JS5_GAMEPACK_SOCKET_NOT_OBSERVED: endpoint-hint routing remains unverified."
+    }
+    if (Test-Path -LiteralPath $clientLog) {
+        $clientLines = @(Get-Content -LiteralPath $clientLog)
+        Write-Host "Client JS5/GPU evidence:"
+        $clientLines | Where-Object { $_ -match "KSP_JS5_GPU_DISABLED|GpuPlugin - Using device|error_game_js5connect|KSP_JS5_GAMEPACK|BUILD FAILED" } | Select-Object -Last 45
+        if ($clientLines -match "GpuPlugin - Using device") {
+            Write-Warning "GPU was initialized despite the isolated safe-mode setting; inspect client log."
+        }
     }
     Write-Host "Client diagnostic log: $clientLog"
     Write-Host "Look for KSP_JS5_GAMEPACK_CODEBASE and KSP_JS5_GAMEPACK_PARAM in the client log."
