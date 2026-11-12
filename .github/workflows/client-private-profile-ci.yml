@@ -33,8 +33,8 @@ jobs:
         run: |
           set -euo pipefail
           cd Microbot-main/runelite-client
-          javac --release 21 -cp build/ksp-profile-tests -d build/ksp-profile-tests \\
-            src/main/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfig.java \\
+          javac --release 21 -cp build/ksp-profile-tests -d build/ksp-profile-tests \
+            src/main/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfig.java \
             src/test/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfigSmokeTest.java
           java -cp build/ksp-profile-tests net.runelite.client.plugins.microbot.KspJs5GamepackProbeConfigSmokeTest
           grep -q 'KspJs5GamepackProbeConfig.codeBase' src/main/java/net/runelite/client/rs/RSAppletStub.java
