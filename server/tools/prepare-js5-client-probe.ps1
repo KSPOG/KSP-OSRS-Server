@@ -17,7 +17,7 @@ param(
     [switch]$ExtendedClientSession
 )
 $ErrorActionPreference = "Stop"
-$commit = "1b352242d81571fe18674eff3c5632ce6aaa22a6"
+$commit = "0eaa873b709464e370a2eb56808c0fe17e9b0605"
 $lab = Join-Path $Repo "server\protocol-lab"
 if (-not $Cache) {
     $Cache = Join-Path $Repo "server\cache-validation\openrs2-2757\extracted\cache"
@@ -94,7 +94,7 @@ if ($Listen) {
     Write-Host "Explicit localhost-only session; client JS5 endpoint must point to 127.0.0.1:$Port"
     Write-Host "Accept timeout 180s, request idle timeout 7s; one connection only."
     if ($ExtendedClientSession) {
-        Write-Host "Extended native gamepack session: max 8192 requests, max session 10 minutes."
+        Write-Host "Extended native gamepack session: max 150000 requests, max session 20 minutes, idle timeout 30s."
     }
     $extended = if ($ExtendedClientSession) { "true" } else { "false" }
     & $exe -p $lab runJs5VerifiedMasterProbe "-PcachePath=$Cache" "-ParchivedMasterPath=$ArchivedMaster" "-PprobePort=$Port" "-PconfirmLocalProbe=true" "-PextendedJs5Session=$extended" --no-daemon
