@@ -81,3 +81,42 @@ To test the **real injected game client**, a separate safe, opt-in
 configuration or tested network routing mechanism will be required.
 The documented private profile still fails closed until actual game
 protocol readiness and private `jav_config` exist.
+
+## Experimental injected-gamepack JS5 endpoint test (not private login)
+
+The `client` branch now has an **independent, opt-in** endpoint-hint
+override for the injected game client's `ClientConfiguration`:
+
+- `KSP_OSRS_JS5_GAMEPACK_PROBE=true` activates it for this client process.
+- `KSP_OSRS_JS5_PROBE_PORT=43596` controls the loopback port.
+- The standard `RSAppletStub` and `MicrobotRSAppletStub` return
+  `http://127.0.0.1:43596/` as their applet codebase and redirect
+  applet parameters named `server`, `port1`, and `port2` to
+  `127.0.0.1`, `43596`, and `43596` respectively.
+- All other parameters remain unchanged. The default applet configuration
+  remains unchanged when the environment flag is absent.
+- `KSP_OSRS_PRIVATE_SERVER=true` cannot be combined with probe mode.
+  Discovery/game-protocol readiness checks remain intact.
+- The two loader entry points log a warning with
+  `KSP_JS5_GAMEPACK_PROBE` when the experimental profile is enabled.
+
+**Important:** This is a candidate OSRS gamepack endpoint mechanism, not
+yet a verified mapping of revision-242 native JS5 host/port selection.
+Gamepack networking and application login may obtain host data through
+other code. Do not enter live account credentials during these tests.
+No proxy, gamepack transformation, OSRS world login, or authentication
+bypass is implemented.
+
+The server development branch includes
+`server/tools/prepare-js5-gamepack-client.ps1` to download a pinned
+isolated client snapshot when needed, install only the checked-in probe
+source into that workspace, and compile the real client. The
+`-LaunchClient` switch additionally starts an ephemeral, one-session
+localhost-only verified JS5 probe and opens the client in its own
+PowerShell window with the probe environment set. The launcher
+does not click, authenticate, or interact with the game.
+
+The next Windows run must establish whether the **injected gamepack**
+actually sends an opcode-15 revision-242 request to the loopback JS5
+listener. Until such network evidence exists, native client acceptance
+remains UNVERIFIED.
