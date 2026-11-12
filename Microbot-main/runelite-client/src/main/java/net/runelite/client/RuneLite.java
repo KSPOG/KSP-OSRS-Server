@@ -83,6 +83,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.gpu.GpuPlugin;
+import net.runelite.client.plugins.microbot.KspJs5LoopbackGuard;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.recovery.RecoveryPrompt;
@@ -216,6 +217,9 @@ public class RuneLite
 	private JagexAuthService jagexAuthService;
 
 	public static void main(String[] args) throws Exception {
+        // Must be installed before any RuneLite config/HTTP/gamepack work.
+        // Probe mode fails closed if explicit local jav_config is missing.
+        KspJs5LoopbackGuard.install();
         validateJavaVersion();
         Locale.setDefault(Locale.ENGLISH);
 
