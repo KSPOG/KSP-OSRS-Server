@@ -178,7 +178,7 @@ try {
     $serverText = ""
     if (Test-Path -LiteralPath $serverOut) {
         $serverText = Get-Content -LiteralPath $serverOut -Raw
-        $serverText -split "\\r?\\n" |
+        $serverText -split '\r?\n' |
             Where-Object { $_ -match "^JS5_(CONTROLLED_PROBE|REQUEST|RESPONSE|HANDSHAKE|NO_CLIENT|CLIENT_CONNECTION)" }
     }
     if ($serverText -match "JS5_HANDSHAKE_ACCEPTED") {
