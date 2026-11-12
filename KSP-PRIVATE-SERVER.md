@@ -88,11 +88,11 @@ The `client` branch now has an **independent, opt-in** endpoint-hint
 override for the injected game client's `ClientConfiguration`:
 
 - `KSP_OSRS_JS5_GAMEPACK_PROBE=true` activates it for this client process.
-- `KSP_OSRS_JS5_PROBE_PORT=43596` controls the loopback port.
+- `KSP_OSRS_JS5_PROBE_PORT=43594` controls the loopback port.
 - The standard `RSAppletStub` and `MicrobotRSAppletStub` return
-  `http://127.0.0.1:43596/` as their applet codebase and redirect
+  `http://127.0.0.1:43594/` as their applet codebase and redirect
   applet parameters named `server`, `port1`, and `port2` to
-  `127.0.0.1`, `43596`, and `43596` respectively.
+  `127.0.0.1`, `43594`, and `43594` respectively.
 - All other parameters remain unchanged. The default applet configuration
   remains unchanged when the environment flag is absent.
 - `KSP_OSRS_PRIVATE_SERVER=true` cannot be combined with probe mode.
