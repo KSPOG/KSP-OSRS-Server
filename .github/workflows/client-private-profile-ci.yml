@@ -45,6 +45,8 @@ jobs:
           grep -q 'KspJs5GamepackProbeConfig.parameter' src/main/java/net/runelite/client/plugins/microbot/MicrobotRSAppletStub.java
           grep -q 'KSP_JS5_GPU_DISABLED' src/main/java/net/runelite/client/RuneLite.java
           grep -q 'pluginManager.setPluginEnabled(plugin, false)' src/main/java/net/runelite/client/RuneLite.java
+          grep -q 'args("--safe-mode")' build.gradle.kts
+          grep -q 'loadInSafeMode = false' src/main/java/net/runelite/client/plugins/gpu/GpuPlugin.java
 
       - name: Compile isolated JS5 client-branch diagnostic
         shell: bash
