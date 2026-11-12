@@ -66,6 +66,25 @@ public final class VerifiedJs5GroupProviderTest {
                     || provider.provide(1, 0) != null)
                     throw new AssertionError("Unsupported group incorrectly served");
 
+                // The CRC excludes the trailing version; a wrong group
+                // version must still be rejected by the provider.
+                try (RandomAccessFile file = new RandomAccessFile(
+                    root.resolve("main_file_cache.dat2").toFile(), "rw")) {
+                    file.seek(2L * 520 + 8 + withSuffix.length - 1);
+                    file.writeByte(8);
+                }
+                if (provider.provide(0, 0) != null)
+                    throw new AssertionError("Group with invalid version trailer served");
+                try (RandomAccessFile file = new RandomAccessFile(
+                    root.resolve("main_file_cache.dat2").toFile(), "rw")) {
+                    file.seek(2L * 520 + 8 + withSuffix.length - 1);
+                    file.writeByte(7);
+                }
+                ByteBuf repaired = provider.provide(0, 0);
+                if (repaired == null)
+                    throw new AssertionError("Restored group version was not accepted");
+                repaired.release();
+
                 // Corrupt payload after initialization: must fail closed.
                 try (RandomAccessFile file = new RandomAccessFile(
                     root.resolve("main_file_cache.dat2").toFile(), "rw")) {

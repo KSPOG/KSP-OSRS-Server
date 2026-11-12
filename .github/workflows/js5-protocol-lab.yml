@@ -1,0 +1,74 @@
+name: JS5 protocol-lab synthetic verification
+
+on:
+  push:
+    branches:
+      - feature/js5-master-reference-comparator
+  pull_request:
+    paths:
+      - 'server/protocol-lab/**'
+      - 'server/tools/js5_master_capture_proxy.py'
+      - 'server/tools/test_js5_master_capture_proxy.py'
+      - '.github/workflows/js5-protocol-lab.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/protocol-lab
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Gradle 8.8
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Compile and test all offline protocol components
+        run: |
+          gradle --no-daemon clean \
+            testCacheReader testReferenceTables testCacheMetadata \
+            testCacheIntegrity testJs5Provider testJs5WireFraming \
+            testJs5HandshakePayload testJs5MasterReferenceComparator \
+            testRevision242MetadataAudit testExhaustiveCacheAudit \
+            testJs5OfflineExchange testJs5MasterWireFixtureAudit testJs5HandshakeDiagnostic \
+            testJs5HandshakeRequestStream testJs5ResponseXor \
+            testJs5ArchivedMasterReferenceAudit testJs5VerifiedMasterProbe \
+            testJs5ProbeAcceptTimeout testJs5ExtendedSession
+
+      - name: Python localhost capture proxy regression tests
+        run: python3 -m unittest -v test_js5_master_capture_proxy.py
+        working-directory: server/tools
+
+      - name: Validate PowerShell JS5 cross-branch runner syntax
+        shell: pwsh
+        working-directory: server/tools
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = @('test-js5-client-branch.ps1', 'prepare-js5-client-probe.ps1', 'prepare-js5-gamepack-client.ps1', 'serve-js5-local-jav-config.ps1', 'test-js5-local-config.ps1')
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path (Get-Location) $file),
+              [ref]$tokens, [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.ToString() }
+              throw "PowerShell syntax failed: $file"
+            }
+            Write-Host "PowerShell syntax PASS: $file"
+          }
+
+      - name: Verify loopback jav_config fixture server
+        shell: pwsh
+        working-directory: server/tools
+        run: ./test-js5-local-config.ps1

@@ -76,8 +76,14 @@ public final class VerifiedJs5GroupProvider implements Js5GroupProvider, AutoClo
             if (!match.matched()) return null;
             int suffix = match.excludedSuffixBytes();
             if (raw.length <= suffix) return null;
-            // Expected: 4-byte on-disk suffix. The other variants remain
-            // recognized by the audit, but all must have a sane JS5 header.
+            // Group trailers, if present, must agree with the reference-table
+            // group version. A valid container CRC excludes that trailer and
+            // therefore cannot detect its corruption by itself.
+            if (suffix >= 2) {
+                int trailer = ((raw[raw.length - 2] & 255) << 8)
+                    | (raw[raw.length - 1] & 255);
+                if (trailer != (metadata.revision() & 0xffff)) return null;
+            }
             byte[] container = java.util.Arrays.copyOf(raw, raw.length - suffix);
             var info = CacheStructureCheck.validateContainer(container);
             if (container.length != info.crcLength()) return null;
