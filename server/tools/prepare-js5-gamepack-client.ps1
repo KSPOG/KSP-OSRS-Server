@@ -18,7 +18,7 @@ param(
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "547b12704c6b109d2078a97ea1e657468d2ce99c"
+$clientCommit = "23036abc82ccafb96c758847ca3737c77c9f5e1e"
 $serverCommit = "8b224b264ca18dab1997aef7b1b3aa22fe161fd6"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if ($LocalConfigPort -lt 1 -or $LocalConfigPort -gt 65535 -or $LocalConfigPort -eq $Port) {
@@ -36,6 +36,7 @@ $files = @(
     "runelite-client/build.gradle.kts",
     "runelite-client/src/main/java/net/runelite/client/RuneLite.java",
     "runelite-client/src/main/java/net/runelite/client/plugins/microbot/KspJs5GamepackProbeConfig.java",
+    "runelite-client/src/main/java/net/runelite/client/plugins/microbot/KspJs5LoopbackGuard.java",
     "runelite-client/src/main/java/net/runelite/client/plugins/microbot/MicrobotRSAppletStub.java",
     "runelite-client/src/main/java/net/runelite/client/rs/RSAppletStub.java",
     "runelite-client/src/main/java/net/runelite/client/plugins/microbot/MicrobotClientLoader.java",
