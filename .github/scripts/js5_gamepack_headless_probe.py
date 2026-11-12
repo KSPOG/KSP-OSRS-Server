@@ -61,8 +61,8 @@ def load_reference_groups(master: bytes) -> dict[int, bytes]:
         if zlib.crc32(payload) & 0xFFFFFFFF != expected_crc:
             raise RuntimeError("Reference group CRC does not match pinned 255/255 master")
         groups[group] = payload
-    if 4 not in groups:
-        raise RuntimeError("Reference table 255/4 is required for this stage")
+    if 4 not in groups or 6 not in groups:
+        raise RuntimeError("Reference tables 255/4 and 255/6 are required for this stage")
     return groups
 
 
@@ -176,6 +176,8 @@ class Js5Handler(socketserver.BaseRequestHandler):
                 else:
                     if group == 4:
                         self.server.reference4_delivered.set()
+                    if group == 6:
+                        self.server.reference6_delivered.set()
                     print("KSP_JS5_NATIVE_VERIFIED_REFERENCE_DELIVERED group="
                           + str(group) + " bytes=" + str(len(frame)), flush=True)
         except (OSError, TimeoutError):
@@ -201,6 +203,7 @@ def main() -> int:
             js5_server.request_observed = threading.Event()
             js5_server.master_delivered = threading.Event()
             js5_server.reference4_delivered = threading.Event()
+            js5_server.reference6_delivered = threading.Event()
             js5_server.master_data = master
             js5_server.reference_groups = reference_groups
             threading.Thread(target=config_server.serve_forever, daemon=True).start()
@@ -257,6 +260,7 @@ def main() -> int:
                 requested = js5_server.request_observed.is_set()
                 master_ok = js5_server.master_delivered.is_set()
                 reference_ok = js5_server.reference4_delivered.is_set()
+                reference6_ok = js5_server.reference6_delivered.is_set()
                 crash = 'Cannot read field "al" because "rd.gr" is null' in captured
                 print(
                     "KSP_JS5_NATIVE_ACCEPTANCE configFetched=" + str(config_ok).lower()
@@ -264,11 +268,12 @@ def main() -> int:
                     + " firstJs5Request=" + str(requested).lower()
                     + " pinnedMasterDelivered=" + str(master_ok).lower()
                     + " reference4Delivered=" + str(reference_ok).lower()
+                    + " reference6Delivered=" + str(reference6_ok).lower()
                     + " priorNpe=" + str(crash).lower(),
                     flush=True,
                 )
                 if (not config_ok or crash or not native_ok or not requested
-                        or not master_ok or not reference_ok):
+                        or not master_ok or not reference_ok or not reference6_ok):
                     return 1
                 return 0
 
