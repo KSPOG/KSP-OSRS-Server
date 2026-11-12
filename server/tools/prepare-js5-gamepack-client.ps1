@@ -16,7 +16,7 @@ param(
     [switch]$LaunchClient
 )
 $ErrorActionPreference = "Stop"
-$clientCommit = "f08b0047cef9212e6274c4947340f80657a9bc9e"
+$clientCommit = "a206724fedd704ad22eeddeddc0d85844c3c3530"
 $serverCommit = "674d2f5e26a08718df7c0c18a3df201d5cd68679"
 if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not $ClientRoot) {
