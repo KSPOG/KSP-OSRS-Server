@@ -45,8 +45,9 @@ public final class Js5VerifiedMasterProbe {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 4 || !"--confirm-local-probe".equals(args[3])) {
-            System.err.println("Usage: Js5VerifiedMasterProbe <cache-dir> <archived-255-255.dat> <port> --confirm-local-probe");
+        if ((args.length != 4 && args.length != 5) || !"--confirm-local-probe".equals(args[3])
+            || (args.length == 5 && !"--extended-client-session".equals(args[4]))) {
+            System.err.println("Usage: Js5VerifiedMasterProbe <cache-dir> <archived-255-255.dat> <port> --confirm-local-probe [--extended-client-session]");
             System.exit(2);
         }
         Path cache = Path.of(args[0]);
@@ -54,17 +55,21 @@ public final class Js5VerifiedMasterProbe {
         int port = Integer.parseInt(args[2]);
         if (port < 1 || port > 65535)
             throw new IllegalArgumentException("Port must be 1..65535");
+        boolean extended = args.length == 5;
+        final int requestLimit = extended ? 8192 : 32;
+        final long sessionDurationMs = extended ? 600_000L : 0L;
         // Admission completes BEFORE any TCP port is opened.
         byte[] verifiedMaster = admit(cache, master);
         try (ServerSocket server = Js5LocalDiagnosticServer.bind(port)) {
             System.out.println("JS5_CONTROLLED_PROBE_READY address=127.0.0.1 port=" + server.getLocalPort());
             System.out.println("master_sha256=" + OPENRS2_CACHE_2757_MASTER_SHA256
                 + " master_bytes=" + verifiedMaster.length);
-            System.out.println("one_session=true accept_timeout=180s request_timeout=7s max_requests=32");
+            System.out.println("one_session=true accept_timeout=180s request_timeout=7s max_requests="
+                + requestLimit + " session_timeout_ms=" + sessionDurationMs);
             System.out.println("real_revision_242_client_acceptance=NOT_YET_VERIFIED");
             Js5HandshakeDiagnosticServer.Report report =
                 Js5HandshakeDiagnosticServer.serveOne(server, cache, verifiedMaster, 180_000,
-                    System.out::println);
+                    requestLimit, sessionDurationMs, System.out::println);
             System.out.println("JS5_CONTROLLED_PROBE_REPORT handshakeAccepted="
                 + report.handshakeAccepted() + " requests=" + report.requests()
                 + " responses=" + report.responses()
@@ -77,6 +82,11 @@ public final class Js5VerifiedMasterProbe {
                 System.out.println("JS5_CLIENT_CONNECTION_INCOMPLETE: no valid revision-242 handshake observed.");
             } else {
                 System.out.println("JS5_HANDSHAKE_OBSERVED: actual client identity/acceptance still needs verification.");
+            }
+            if ("REQUEST_LIMIT".equals(report.termination())) {
+                System.out.println("JS5_REQUEST_LIMIT_REACHED: diagnostic request cap reached before client completion.");
+            } else if ("SESSION_TIME_LIMIT".equals(report.termination())) {
+                System.out.println("JS5_SESSION_TIME_LIMIT: controlled diagnostic duration exceeded.");
             }
             System.out.println("Client signature acceptance, account login and game world: UNVERIFIED");
         }
