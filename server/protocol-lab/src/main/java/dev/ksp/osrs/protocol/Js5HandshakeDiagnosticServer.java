@@ -23,6 +23,7 @@ public final class Js5HandshakeDiagnosticServer {
     public static final int INIT_JS5_OPCODE = 15;
     private static final int READ_TIMEOUT_MS = 7000;
     private static final int REQUEST_LIMIT = 32;
+    static final int MAX_CONTROLLED_REQUESTS = 65_536;
 
     private Js5HandshakeDiagnosticServer() {}
 
@@ -48,6 +49,18 @@ public final class Js5HandshakeDiagnosticServer {
     /** Emits protocol-level events only; never logs seed words or account data. */
     static Report serveOne(ServerSocket listener, Path cache, byte[] verifiedMaster,
                            int acceptTimeoutMs, Consumer<String> eventLog) throws IOException {
+        return serveOne(listener, cache, verifiedMaster, acceptTimeoutMs,
+            REQUEST_LIMIT, 0L, eventLog);
+    }
+
+    /** Extended native-client capture with explicit caps; legacy tests retain 32-request behavior. */
+    static Report serveOne(ServerSocket listener, Path cache, byte[] verifiedMaster,
+                           int acceptTimeoutMs, int maxRequests, long maxSessionMs,
+                           Consumer<String> eventLog) throws IOException {
+        if (maxRequests < 1 || maxRequests > MAX_CONTROLLED_REQUESTS)
+            throw new IllegalArgumentException("Request limit must be 1.." + MAX_CONTROLLED_REQUESTS);
+        if (maxSessionMs < 0 || maxSessionMs > 30 * 60_000L)
+            throw new IllegalArgumentException("Session duration must be 0..1800000ms");
         if (eventLog == null) throw new IllegalArgumentException("Event log must not be null");
         if (acceptTimeoutMs < 1 || acceptTimeoutMs > 180_000)
             throw new IllegalArgumentException("Invalid local accept timeout");
@@ -97,7 +110,11 @@ public final class Js5HandshakeDiagnosticServer {
             int requests = 0, responses = 0;
             int xorKey = 0;
             long bytes = 0;
-            while (requests < REQUEST_LIMIT) {
+            final long deadline = maxSessionMs == 0 ? Long.MAX_VALUE :
+                System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(maxSessionMs);
+            while (requests < maxRequests) {
+                if (System.nanoTime() >= deadline)
+                    return new Report(true, requests, responses, bytes, "SESSION_TIME_LIMIT");
                 byte[] message = new byte[4];
                 try {
                     if (!readFully(input, message))
