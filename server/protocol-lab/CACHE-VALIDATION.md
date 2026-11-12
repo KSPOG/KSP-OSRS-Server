@@ -533,3 +533,31 @@ probe **does not** reconfigure or launch the client. A valid handshake
 and cache responses alone do not prove that the client successfully
 reaches a world or that signature constraints have been met. The PR
 must remain a draft until a real client session establishes more.
+
+## Client-branch smoke integration and empty-listener fix (2026-11-12)
+
+The user's `prepare-js5-client-probe.ps1 -Listen` correctly passed all
+preflight checks but failed after the 180-second accept window because
+no client had connected to `127.0.0.1:43596`.
+This is an expected **`NO_CLIENT_CONNECTED`** outcome, not evidence
+of malformed cache data. `Js5HandshakeDiagnosticServer` now returns
+a bounded diagnostic report on accept timeout; `Js5VerifiedMasterProbe`
+prints a clear `JS5_NO_CLIENT_CONNECTED` status and finishes without
+a Java stack trace. The new `testJs5ProbeAcceptTimeout` CI task covers
+this condition and retains all existing 255/255 SHA-verification gates.
+
+The repo's separate `client` branch contains Microbot client source,
+but its current private-server loader alters the HTTP `jav_config`
+and RuneLite world-directory endpoints, **not** the injected game
+client's native JS5 socket address. The unconfigured client cannot
+be expected to contact the probe automatically.
+
+For a no-manual-client connection smoke test, use the Git-free
+server-branch `server/tools/test-js5-client-branch.ps1`. It starts the
+existing bounded verified-master probe and runs the **client-branch
+standalone Java transport diagnostic** against it, then closes the
+test process. It checks the pinned OpenRS2 master against the TCP
+response and exercises revision-242 initialization plus XOR response
+framing. It does not modify the real game client's networking or
+prove injected gamepack acceptance. The real client connection gate
+remains open.
