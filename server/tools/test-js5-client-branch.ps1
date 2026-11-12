@@ -104,11 +104,23 @@ try {
         $serverLines | Select-Object -Last 25
         throw "Gradle launcher did not exit within 90 seconds after protocol completion. Logs: $root"
     }
-    if ($proc.ExitCode -ne 0) {
+    # Windows PowerShell 5.1 may expose a null ExitCode for a child
+    # PowerShell wrapper despite HasExited=true. Never coerce null into
+    # an error: require explicit Gradle success evidence from its log.
+    $buildSucceeded = @($serverLines | Where-Object { $_ -match '^BUILD SUCCESSFUL(?:\\s|$)' }).Count -ge 1
+    $buildFailed = @($serverLines | Where-Object {
+        $_ -match '^BUILD FAILED(?:\\s|$)' -or $_ -match '^> Task :runJs5VerifiedMasterProbe FAILED'
+    }).Count -gt 0
+    $exitCode = $proc.ExitCode
+    if ($buildFailed -or -not $buildSucceeded -or
+        ($null -ne $exitCode -and $exitCode -ne 0)) {
         Write-Host "Server tail:"
         $serverLines | Select-Object -Last 35
         if ($errors.Count -gt 0) { Write-Host "Server stderr:"; $errors | Select-Object -Last 25 }
-        throw "JS5 protocol succeeded but launcher exited with code $($proc.ExitCode). Logs: $root"
+        throw "Server wrapper could not be verified: exitCode=$exitCode buildSucceeded=$buildSucceeded buildFailed=$buildFailed. Logs: $root"
+    }
+    if ($null -eq $exitCode) {
+        Write-Host "JS5_WRAPPER_EXIT_CODE_UNAVAILABLE: using successful Gradle build plus exact protocol report."
     }
     Write-Host "KSP_JS5_CROSS_BRANCH_SMOKE_PASS"
     Write-Host "This proves transport from client-branch diagnostic only, NOT injected game client acceptance."
