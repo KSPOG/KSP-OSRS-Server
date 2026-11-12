@@ -397,3 +397,11 @@ tasks.register<JavaExec>("auditJs5VerifiedMasterProbe") {
         args(cache, archivedMaster)
     }
 }
+
+tasks.register<JavaExec>("testJs5ProbeAcceptTimeout") {
+    group = "verification"
+    description = "Check empty-client accept window returns NO_CLIENT_CONNECTED rather than failing."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.Js5ProbeAcceptTimeoutTest")
+}
