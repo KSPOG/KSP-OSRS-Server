@@ -54,3 +54,30 @@ To apply this diagnostic from GitHub without Git CLI, update **both** `MicrobotP
 ## Verified OSRS revision 242 (10 Nov 2026)
 
 The actual injected game client's `Client.getRevision()` returned **242** at `LOGIN_SCREEN`, with build ID `41605773992.307`. This confirms the target protocol revision for this pinned client build. `KspServerDiscovery` rejects mismatched or unverified revisions before checking protocol readiness. The server still has `gameProtocolReady=false` and `javConfigReady=false`, so a private-game login is intentionally unavailable until those systems really exist and are verified.
+
+## JS5-only transport diagnostic (separate from private login)
+
+The server branch includes a **one-session, loopback-only** verified-master
+JS5 probe bound on `127.0.0.1:43596`. This client branch includes
+`KspJs5ConnectionProbe.java` as an **explicit standalone Java main class**
+and the Gradle task `:client:probeKspJs5Connection`.
+
+This diagnostic verifies the revision-242 21-byte JS5 handshake
+(opcode 15 + revision 242 and four 32-bit words), the acknowledged
+`255/255` master response exactly against a SHA-256 pinned independent
+OpenRS2 archived master, and a subsequent XOR-wrapped `255/24` response.
+It does NOT inject network hooks into the gamepack, configure the
+injected client connection, or activate private login. Regular RuneLite
+startup and `KspServerDiscovery.verifyReady()` are unchanged.
+
+The accompanying server-branch script
+`server/tools/test-js5-client-branch.ps1` creates a short-lived
+loopback JS5 listener and runs this client-branch diagnostic automatically.
+It also cleans up the listener it creates. The test cannot establish
+acceptance by the injected game client and must never be represented
+as a successful game login.
+
+To test the **real injected game client**, a separate safe, opt-in
+configuration or tested network routing mechanism will be required.
+The documented private profile still fails closed until actual game
+protocol readiness and private `jav_config` exist.
