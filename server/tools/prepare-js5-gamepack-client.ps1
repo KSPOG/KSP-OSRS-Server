@@ -97,11 +97,13 @@ try {
     Pop-Location
 }
 Write-Host "KSP_JS5_GAMEPACK_CLIENT_COMPILE_PASS"
+Write-Host "KSP_JS5_NEXT_PHASE launchRequested=$([bool]$LaunchClient) port=$Port"
 Write-Host "Injected gamepack JS5 endpoint consumption: NOT YET VERIFIED"
 if (-not $LaunchClient) {
     Write-Host "No network listener or game client launched. Re-run with -LaunchClient when ready."
     return
 }
+Write-Host "KSP_JS5_PORT_CHECK port=$Port"
 if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
     throw "Port $Port is already in use by a listener; close it before the controlled test"
 }
@@ -111,7 +113,8 @@ $serverScript = Join-Path $runRoot "prepare-js5-client-probe.ps1"
 $launchScript = Join-Path $runRoot "launch-client.ps1"
 $serverOut = Join-Path $runRoot "server.log"
 $serverErr = Join-Path $runRoot "server.err"
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/prepare-js5-client-probe.ps1" -OutFile $serverScript -UseBasicParsing
+Write-Host "KSP_JS5_SERVER_PREP downloadingPinnedProbe=true"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/KSPOG/KSP-OSRS-Server/$serverCommit/server/tools/prepare-js5-client-probe.ps1" -OutFile $serverScript -UseBasicParsing -TimeoutSec 45
 $launcher = @'
 param([string]$ClientRoot, [string]$LogPath, [string]$ProfileRoot, [int]$Port)
 Set-Location -LiteralPath $ClientRoot
@@ -123,6 +126,7 @@ Write-Host 'Do not enter account credentials.'
 Set-Content -LiteralPath $launchScript -Value $launcher -Encoding UTF8
 $serverProc = $null
 try {
+    Write-Host "KSP_JS5_SERVER_START port=$Port"
     $serverProc = Start-Process -FilePath "powershell.exe" -PassThru -WindowStyle Hidden -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $serverScript,
         "-Repo", $Repo, "-Port", $Port, "-Listen"
@@ -150,11 +154,12 @@ try {
     Write-Host "JS5 pinned master server ready. Launching real injected game client in its own PowerShell window."
     Write-Host "Do not log in; this is a JS5-only diagnostic."
     $clientLog = Join-Path $runRoot "client.log"
-    Start-Process -FilePath "powershell.exe" -ArgumentList @(
+    $clientProc = Start-Process -FilePath "powershell.exe" -PassThru -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", $launchScript,
         "-ClientRoot", $ClientRoot, "-LogPath", $clientLog,
         "-ProfileRoot", (Join-Path $runRoot "isolated-client-home"), "-Port", $Port
-    ) | Out-Null
+    )
+    Write-Host "KSP_JS5_CLIENT_LAUNCH_REQUESTED processId=$($clientProc.Id) isolatedProfile=true"
     $until = (Get-Date).AddSeconds(210)
     $nextNotice = (Get-Date).AddSeconds(20)
     $sawHandshake = $false
