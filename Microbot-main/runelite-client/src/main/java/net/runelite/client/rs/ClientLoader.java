@@ -64,7 +64,9 @@ public class ClientLoader implements Supplier<Client>
 		this.clientConfigLoader = new ClientConfigLoader(okHttpClient);
 		this.worldSupplier = new WorldSupplier(okHttpClient);
 		this.runtimeConfigLoader = runtimeConfigLoader;
-		this.javConfigUrl = KspPrivateServerConfig.resolveJavConfigUrl(javConfigUrl);
+		this.javConfigUrl = KspJs5GamepackProbeConfig.enabled()
+            ? KspJs5GamepackProbeConfig.localJavConfigUrl()
+            : KspPrivateServerConfig.resolveJavConfigUrl(javConfigUrl);
 	}
 
 	@Override
@@ -116,6 +118,23 @@ public class ClientLoader implements Supplier<Client>
 	private RSConfig downloadConfig() throws IOException
 	{
 		HttpUrl url = HttpUrl.get(javConfigUrl);
+        if (KspJs5GamepackProbeConfig.enabled())
+        {
+            // Never fall back to Jagex configuration, world lookup or backup
+            // when running the private JS5 experiment.
+            RSConfig localProbe = clientConfigLoader.fetch(url);
+            if (Strings.isNullOrEmpty(localProbe.getCodeBase())
+                || Strings.isNullOrEmpty(localProbe.getInitialJar())
+                || Strings.isNullOrEmpty(localProbe.getInitialClass()))
+            {
+                throw new IOException("Local JS5 jav_config is incomplete");
+            }
+            KspJs5GamepackProbeConfig.validateLocalConfig(
+                localProbe.getCodeBase(), localProbe.getClassLoaderProperties(),
+                localProbe.getAppletProperties());
+            log.info("KSP_JS5_LOCAL_CONFIG_ACCEPTED | origin=loopback noOfficialFallback=true");
+            return localProbe;
+        }
         if (KspPrivateServerConfig.enabled())
         {
             // Fail closed: an unfinished local game service must never silently
