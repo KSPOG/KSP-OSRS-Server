@@ -4,6 +4,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -72,6 +73,43 @@ public final class KspJs5GamepackProbeConfig
         catch (URISyntaxException invalid)
         {
             throw new IllegalArgumentException("Malformed JS5 local jav_config URL", invalid);
+        }
+    }
+
+    /**
+     * Refuse untrusted production endpoints from a local configuration.
+     * This protects config-origin and advertised URLs only. It is not
+     * proof that embedded gamepack sockets cannot reach external hosts.
+     */
+    public static void validateLocalConfig(String codebase,
+                                            Map<String, String> loaderProperties,
+                                            Map<String, String> appletProperties)
+    {
+        requireLocalJavConfigUrl(codebase);
+        validateLocalConfigValues(loaderProperties);
+        validateLocalConfigValues(appletProperties);
+    }
+
+    private static void validateLocalConfigValues(Map<String, String> values)
+    {
+        for (Map.Entry<String, String> entry : values.entrySet())
+        {
+            String value = entry.getValue();
+            if (value == null)
+            {
+                continue;
+            }
+            String lower = value.toLowerCase(java.util.Locale.ROOT);
+            if (lower.contains("runescape.com") || lower.contains("jagex.com")
+                || lower.contains("runescape.net") || lower.contains("jagex.net"))
+            {
+                throw new IllegalArgumentException(
+                    "JS5 local jav_config contains a production endpoint in parameter " + entry.getKey());
+            }
+            if (lower.startsWith("http://") || lower.startsWith("https://"))
+            {
+                requireLocalJavConfigUrl(value);
+            }
         }
     }
 
