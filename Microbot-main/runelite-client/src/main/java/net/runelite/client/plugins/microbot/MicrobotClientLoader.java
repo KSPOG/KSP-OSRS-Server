@@ -208,6 +208,11 @@ public class MicrobotClientLoader implements Supplier<Client>
 		rs.setConfiguration(new MicrobotRSAppletStub(config, runtimeConfigLoader));
 
 		log.info("injected-client {}", rs.getBuildID());
+        if (KspJs5GamepackProbeConfig.enabled())
+        {
+            KspJs5GamepackProbeConfig.validateConfiguration();
+            log.warn("KSP_JS5_GAMEPACK_PROBE | enabled=true target=127.0.0.1 appletEndpointHintsOnly=true gamepackAcceptance=UNVERIFIED");
+        }
         if ("true".equalsIgnoreCase(System.getenv("KSP_OSRS_LOG_REVISION")))
         {
             log.info("KSP_OSRS_REVISION | revision={} buildId={} privateProfile={}",
