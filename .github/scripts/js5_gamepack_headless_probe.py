@@ -133,6 +133,18 @@ def main() -> int:
                         elif "NullPointerException:" in line:
                             print("KSP_JS5_CLIENT_NPE_OBSERVED", flush=True)
                 config_ok = config_server.config_served.is_set()
+                # On CI startup failures print only narrowly scoped build
+                # diagnostics. The profile contains no account credentials.
+                if not config_ok:
+                    for line in captured.splitlines()[-50:]:
+                        if any(needle in line for needle in (
+                            "FAILURE:", "What went wrong", "Problem:", "Could not",
+                            "Execution failed", "Unrecognized option", "Exception",
+                            "Task :", "Error:", "does not exist", "not found"
+                        )):
+                            redacted = re.sub(r"https?://[^\\s]+", "<url>", line)
+                            redacted = re.sub(r"[^\\s]+@[^\\s]+", "<email>", redacted)
+                            print("KSP_JS5_LAUNCH_DIAGNOSTIC " + redacted[:300], flush=True)
                 native_ok = js5_server.handshake_accepted.is_set()
                 crash = 'Cannot read field "al" because "rd.gr" is null' in captured
                 print(
