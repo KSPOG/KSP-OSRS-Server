@@ -714,6 +714,13 @@ tasks.register<JavaExec>("runKspJs5GamepackProbe") {
     environment("KSP_OSRS_JS5_GAMEPACK_PROBE", "true")
     environment("KSP_OSRS_JS5_PROBE_PORT", portText)
     environment("KSP_OSRS_PRIVATE_SERVER", "false")
+    // Explicit opt-in local configuration, never production jav_config.
+    // A missing local HTTP service must cause startup to fail closed.
+    environment(
+        "KSP_OSRS_JS5_LOCAL_JAV_CONFIG_URL",
+        providers.gradleProperty("kspJs5LocalConfigUrl")
+            .getOrElse("http://127.0.0.1:43595/jav_config.ws")
+    )
     environment("KSP_OSRS_LOG_REVISION", "true")
 
     doFirst {
