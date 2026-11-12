@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.microbot.KspPrivateServerConfig;
+import net.runelite.client.plugins.microbot.KspJs5GamepackProbeConfig;
 import net.runelite.client.plugins.microbot.KspServerDiscovery;
 import net.runelite.client.RuntimeConfig;
 import net.runelite.client.RuntimeConfigLoader;
@@ -211,6 +212,11 @@ public class ClientLoader implements Supplier<Client>
 		rs.setConfiguration(new RSAppletStub(config, runtimeConfigLoader));
 
 		log.info("injected-client {}", rs.getBuildID());
+        if (KspJs5GamepackProbeConfig.enabled())
+        {
+            KspJs5GamepackProbeConfig.validateConfiguration();
+            log.warn("KSP_JS5_GAMEPACK_PROBE | enabled=true target=127.0.0.1 appletEndpointHintsOnly=true gamepackAcceptance=UNVERIFIED");
+        }
         if ("true".equalsIgnoreCase(System.getenv("KSP_OSRS_LOG_REVISION")))
         {
             log.info("KSP_OSRS_REVISION | revision={} buildId={} privateProfile={}",
