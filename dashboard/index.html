@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KSP World Control</title>
+<style>
+:root{color-scheme:dark;font:16px 'Inter',system-ui,sans-serif;background:#101620;color:#e9eef5}
+body{margin:0}header{border-bottom:1px solid #344257}main,.bar{max-width:1040px;margin:auto;padding:24px}
+.bar,.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0 0 16px;font-size:2rem}a{color:#a5c6ff}
+button,input{font:inherit;padding:8px 12px;border:1px solid #536783;border-radius:6px}
+button{background:#355e94;color:#fff;cursor:pointer}button[data-action="stop"]{background:#713a44}
+button:disabled{opacity:.5;cursor:default}input{background:#121b2a;color:#fff}
+.panel{margin-top:18px;border:1px solid #344257;border-radius:8px;overflow:auto;background:#192432}
+.toolbar{padding:16px}.toolbar form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+p[role=status]{padding:0 16px;min-height:1.4em;color:#b8c7d9}
+table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}
+th,td{padding:14px;border-bottom:1px solid #344257}tr:last-child td{border-bottom:0}
+.online{color:#91dbb6}.offline{color:#d4b694}
+</style>
+</head>
+<body>
+<header><div class="bar"><strong>KSP OSRS</strong><nav><a href="/register">Create game account</a> · <a href="/admin/accounts">Game accounts</a> · <a href="/admin/bank">Player bank administration</a></nav></div></header>
+<main>
+<h1>World management</h1>
+<section class="panel" aria-label="World controls">
+<div class="toolbar">
+<form id="connect"><label for="token">Admin token</label><input type="password" id="token" required autocomplete="off"><button>Connect</button></form>
+<button id="refresh" type="button" disabled>Refresh</button>
+</div>
+<p id="message" role="status">Enter the admin token shown in the server window.</p>
+<table>
+<thead><tr><th scope="col">World</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Players</th><th scope="col">Port</th><th scope="col">Tick</th><th scope="col">Action</th></tr></thead>
+<tbody id="worlds"></tbody>
+</table>
+</section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let token = '';
+let busy = false;
+async function request(path, method = 'GET') {
+    const response = await fetch('/admin/api/worlds' + path, {
+        method,
+        headers: {Authorization: 'Bearer ' + token}
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Request failed');
+    return data;
+}
+function render(worlds) {
+    const rows = worlds.map(world => {
+        const row = document.createElement('tr');
+        const status = world.optInRequired ? 'Opt-in required' : world.listenerActive ? 'Online' : 'Offline';
+        for (const label of [world.id, world.type === 'P2P' ? 'Members' : 'Free-to-play',
+            status, world.population, world.tcpPort, world.ticks]) {
+            const cell = row.insertCell();
+            cell.textContent = label;
+            if (label === status) cell.className = world.listenerActive ? 'online' : 'offline';
+        }
+        const button = document.createElement('button');
+        const action = world.listenerActive ? 'stop' : 'start';
+        button.type = 'button';
+        button.dataset.action = action;
+        button.textContent = action === 'stop' ? 'Stop' : 'Start';
+        button.disabled = world.optInRequired;
+        button.setAttribute('aria-label', button.textContent + ' world ' + world.id);
+        button.addEventListener('click', () => {
+            if (action === 'stop' && !confirm('Stop world ' + world.id + '?')) return;
+            update('/' + world.id + '/' + action, 'POST');
+        });
+        row.insertCell().append(button);
+        return row;
+    });
+    $('worlds').replaceChildren(...rows);
+}
+async function update(path = '', method = 'GET') {
+    if (busy || !token) return;
+    busy = true;
+    $('refresh').disabled = true;
+    try {
+        render(await request(path, method));
+        $('message').textContent = 'Worlds updated';
+    } catch (error) {
+        $('message').textContent = error.message;
+    } finally {
+        $('refresh').disabled = false;
+        busy = false;
+    }
+}
+$('connect').addEventListener('submit', event => {
+    event.preventDefault();
+    if (busy) return;
+    token = $('token').value;
+    $('token').value = '';
+    update();
+});
+$('refresh').addEventListener('click', () => update());
+setInterval(() => { if (token && !busy) update(); }, 10000);
+</script>
+</body>
+</html>

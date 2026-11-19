@@ -1,0 +1,75 @@
+name: Nightly release
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # You can choose a different runner if needed
+    permissions: write-all
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Specify the branch you want
+          ref: development
+
+      - name: Force sync with latest development
+        run: |
+          git fetch origin development
+          git checkout development
+          git reset --hard origin/development
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 11
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      - name: Build Shaded JAR
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          ./gradlew :client:shadowJar :hwid-agent:jar -Pmicrobot.commit.sha=$COMMIT_SHA -Pmicrobot.build.channel=nightly -Pmicrobot.build.repository=${{ github.repository }}
+
+      - name: Read microbot.version from Gradle
+        id: version
+        run: |
+          V=$(./gradlew -q properties --console=plain | sed -n 's/^microbot.version: //p')
+          if [ -z "$V" ]; then V=$(grep '^microbot.version=' gradle.properties | cut -d= -f2); fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Using version: $V"
+
+      - name: Prepare artifact name
+        run: |
+          SRC=$(echo runelite-client/build/libs/client-*-shaded.jar)
+          DEST=runelite-client/build/libs/microbot-${{ steps.version.outputs.version }}.jar
+          cp "$SRC" "$DEST"
+          cp hwid-agent/build/libs/hwid-agent-*.jar runelite-client/build/libs/
+
+      - name: Create Release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "nightly"
+          prerelease: false
+          title: "Nightly Build"
+          files: |
+            /home/runner/work/Microbot/Microbot/runelite-client/build/libs/microbot-*.jar
+            /home/runner/work/Microbot/Microbot/runelite-client/build/libs/hwid-agent-*.jar
+
+      - name: Upload Jar to Hetzner
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: root
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: runelite-client/build/libs/microbot-*.jar,runelite-client/build/libs/hwid-agent-*.jar
+          target: /var/www/files/releases/microbot/nightly/
+          strip_components: 2

@@ -1,0 +1,30 @@
+package dev.ksp.osrs.protocol;
+final class NewPlayerProfile {
+ static final int SPAWN_X = 3094;
+ static final int SPAWN_Z = 3107;
+ static final int DESIGN = 0;
+ static final int GUIDE = 1;
+ static final int SURVIVAL = 2;
+ static final int CHOP_TREE = 3;
+ static final int FIRE = 4;
+ static final int FISH = 5;
+ static final int COOK_SHRIMP = 6;
+ static final int CHEF = 7;
+ static final int MIX_DOUGH = 8;
+ static final int BAKE_BREAD = 9;
+ static final int QUEST_GUIDE = 10;
+ static final int MINING_GUIDE = 11;
+ static final int MINE_ORES = 12;
+ static final int SMELT_BRONZE = 13;
+ static final int SMITH_DAGGER = 14;
+ static final int COMBAT_GUIDE = 15;
+ static final int SURVIVAL_TOOLS = 16;
+ static final int COLLECT_HAMMER = 17;
+ static final int VIEW_INVENTORY = 18;
+ static final int VIEW_SKILLS = 19;
+ static final int VIEW_QUESTS = 20;
+ static final int QUEST_GUIDE_RETURN = 21;
+ static final int GUIDE_SETTINGS = 22;
+ static final int GUIDE_RETURN = 23;
+ static final int EXPERIENCE_SELECTION = 24;
+}

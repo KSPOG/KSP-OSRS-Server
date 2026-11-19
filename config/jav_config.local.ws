@@ -1,0 +1,23 @@
+title=KSP OSRS Server
+codebase=http://127.0.0.1:@GAME_PORT@/
+initial_jar=gamepack.jar
+initial_class=client.class
+param=1=1
+param=2=http://127.0.0.1:8087/disabled-payments
+param=3=@WORLD_MEMBER@
+param=4=45569
+param=5=@WORLD_FLAGS@
+param=6=0
+param=7=0
+param=8=true
+param=9=ElZAIrq5NpKN6D3mDdihco3oPeYN2KFy2DCquj7JMmECPmLrDP3Bnw
+param=10=5
+param=11=http://127.0.0.1:8087/disabled-auth
+param=12=@WORLD_ID@
+param=13=.localhost
+param=14=0
+param=15=0
+param=16=false
+param=17=http://127.0.0.1:8087/client/worlds.bin
+param=18=
+param=19=disabled-local-client-id

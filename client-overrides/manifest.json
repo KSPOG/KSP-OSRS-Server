@@ -1,0 +1,17 @@
+[
+  {
+    "path": "net/runelite/client/RuneLite.java",
+    "original": "7268c0bb6fbf3ce2cf2d192d7f24dfcc694f06851735c35de95eb29740d80d04",
+    "updated": "c41b5d199d9b92681e5674b4a58f6d519452f30bc4bd316607714a94b23dac2d"
+  },
+  {
+    "path": "net/runelite/client/game/WorldClient.java",
+    "original": "c6e24766f9bed453b4224b6366cf96584aa34dfe6ea0c626dc547dd8d43c3346",
+    "updated": "4260bc7b267e2c6b221f99f75c6ad0589f4b3935c6f78bf03b7ba9e6943bdee6"
+  },
+  {
+    "path": "net/runelite/client/plugins/microbot/KspJs5LoopbackGuard.java",
+    "original": "24f215fed040334f2499ff22e48d3a180630c19ac3eef80bf915365bda6afc20",
+    "updated": "0773433e1ca8f900e84dd6a707acfdc4e48d8efd677acdc8b4b90986998c37b4"
+  }
+]

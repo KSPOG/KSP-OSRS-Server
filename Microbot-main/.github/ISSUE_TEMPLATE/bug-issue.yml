@@ -1,0 +1,19 @@
+name: Bug Report
+description: Report a clearly broken issue.
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Microbot bug report
+  - type: textarea
+    attributes:
+      label: Bug description
+      description: How did you find the bug? Any additional details that might help?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Diagnostics
+      description: Click the bug icon in the client's right-hand toolbar, choose **Copy diagnostics**, and paste the result here.
+      render: text

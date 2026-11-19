@@ -1,0 +1,45 @@
+gradle.beforeProject { project ->
+    if (project.path != ':client') return
+
+    project.pluginManager.withPlugin('java') {
+        def localGamepack = project.providers.gradleProperty('kspLocalGamepack')
+        def localHome = project.providers.gradleProperty('kspLocalGameHome')
+        project.tasks.register('runKspLocalGameLogin', JavaExec) {
+            group = 'application'
+            description = 'Launch the pinned gamepack against the localhost revision-242 listener.'
+            dependsOn(project.tasks.named('classes'))
+            mainClass.set('net.runelite.client.RuneLite')
+            if (project.providers.gradleProperty('kspLocalSafeMode').orNull == 'true') args('--safe-mode')
+            classpath = project.sourceSets.main.runtimeClasspath
+
+            environment('KSP_OSRS_JS5_GAMEPACK_PROBE', 'true')
+            def world = project.providers.gradleProperty('kspLocalWorld').get()
+            if (!(world ==~ /[0-9]{1,4}/)) throw new GradleException('Invalid local world ID')
+            environment('KSP_OSRS_JS5_PROBE_PORT', Integer.toString(43000 + Integer.parseInt(world)))
+            environment('KSP_OSRS_JS5_LOCAL_JAV_CONFIG_URL', "http://127.0.0.1:8087/client/jav_config.ws?world=${world}")
+            environment('KSP_LOCAL_WORLD_DIRECTORY', 'http://127.0.0.1:8087/client/worlds.js')
+            environment('KSP_LOCAL_PLUGIN_HUBS', project.providers.gradleProperty('kspLocalSafeMode').orNull != 'true')
+            ['JX_ACCESS_TOKEN', 'JX_REFRESH_TOKEN', 'JX_SESSION_ID', 'JX_CHARACTER_ID', 'JX_DISPLAY_NAME',
+                'GITHUB_TOKEN'].each { getEnvironment().remove(it) }
+            environment('KSP_OSRS_PRIVATE_SERVER', 'false')
+            environment('KSP_OSRS_LOG_REVISION', 'true')
+
+            doFirst {
+                def gamepack = project.file(localGamepack.get())
+                if (!gamepack.isFile()) {
+                    throw new GradleException('The localhost gamepack is missing.')
+                }
+                def pinned = 'injected-client-1.13.6.jar'
+                def runtime = classpath.files
+                if (runtime.count { it.name == pinned } != 1) {
+                    throw new GradleException('Expected exactly one pinned injected gamepack on the client classpath.')
+                }
+                classpath = project.files(runtime.collect { it.name == pinned ? gamepack : it })
+                def profile = project.file(localHome.get())
+                profile.mkdirs()
+                jvmArgs('-Dfile.encoding=UTF-8', '-Djava.security.manager=allow', "-Duser.home=${profile.absolutePath}", '-ea')
+                println('KSP_LOCAL_LOGIN_CLIENT_LAUNCH world=' + world)
+            }
+        }
+    }
+}

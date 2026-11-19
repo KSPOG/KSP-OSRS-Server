@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create an account | KSP OSRS</title>
+<style>
+:root{color-scheme:dark;font:16px Inter,system-ui,sans-serif;background:#101620;color:#e9eef5}
+main{max-width:420px;margin:4rem auto;padding:1.5rem}form{display:grid;gap:1rem}
+label{display:grid;gap:.375rem}input,button{padding:.7rem;font:inherit;border:1px solid #536783;border-radius:6px}
+button{background:#355e94;color:white;cursor:pointer}a{color:#a5c6ff}
+</style>
+</head>
+<body><main>
+<a href="/admin">World dashboard</a>
+<h1>Create a game account</h1>
+<p>Use your username and password to sign in to World 301.</p>
+<form id="register">
+<label>Username <input name="username" required maxlength="12" pattern="[A-Za-z0-9_]{1,12}" autocomplete="username"></label>
+<label>Password <input name="password" type="password" required minlength="8" maxlength="20" autocomplete="new-password"></label>
+<label>Confirm password <input name="confirm" type="password" required minlength="8" maxlength="20" autocomplete="new-password"></label>
+<button>Create account</button>
+<p id="status" role="status"></p>
+</form>
+</main>
+<script>
+const form = document.getElementById('register');
+const status = document.getElementById('status');
+form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (form.password.value !== form.confirm.value) {
+        status.textContent = 'The passwords must match.';
+        return;
+    }
+    const button = form.querySelector('button');
+    button.disabled = true;
+    const body = new URLSearchParams({ username: form.username.value, password: form.password.value });
+    try {
+        const response = await fetch('/register', {method: 'POST', body});
+        status.textContent = await response.text();
+        if (response.ok) form.reset();
+    } catch {
+        status.textContent = 'Could not reach the local server.';
+    } finally {
+        button.disabled = false;
+    }
+});
+</script></body>
+</html>

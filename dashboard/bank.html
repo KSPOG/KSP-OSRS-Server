@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KSP RSPS · Player containers</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color-scheme:dark;background:#0e1726;color:#e8edf7}*{box-sizing:border-box}body{margin:0}
+header{padding:20px 24px;background:#17243a;border-bottom:1px solid #34445f}main{max-width:1040px;margin:26px auto;padding:0 22px}
+a{color:#b5c9ff}.panel{background:#1b293e;border:1px solid #384a66;border-radius:12px;padding:21px;margin:16px 0}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}label{font-size:14px;color:#ccd5e7}input,select{min-width:0;background:#101b2c;color:white;border:1px solid #536580;border-radius:7px;padding:10px}
+select{min-width:250px;max-width:100%}button{background:#5077e9;color:white;border:0;border-radius:7px;padding:11px 15px;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}
+button.secondary{background:#344662}button.danger{background:#98455a}button.active{outline:2px solid #afc5ff}
+p,.subtle{color:#acbed7}table{border-collapse:collapse;width:100%;margin-top:14px}th,td{border-bottom:1px solid #354761;text-align:left;padding:10px}
+tr[data-slot]{cursor:pointer}tr[data-slot]:hover{background:#283852}.pill{font-size:12px;padding:4px 9px;border-radius:20px;background:#354762;color:#d8e3f7}.pill.live{background:#1e664e;color:#cbfce7}
+.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.controls label{display:grid;gap:6px}
+@media(max-width:620px){.controls{grid-template-columns:1fr}main{padding:0 14px}}
+</style>
+</head>
+<body><header><strong>KSP RSPS</strong> <span class="subtle">· Player bank / inventory administration</span></header>
+<main><a href="/admin">World dashboard</a> · <a href="/admin/accounts">Account administration</a>
+<h1>Player containers</h1><p>Edit real RSPS gameplay containers. Online players are shown first, with their world ID. Offline registered accounts remain selectable.</p>
+<section class="panel"><div class="row"><input type="password" id="token" autocomplete="off" placeholder="Admin token" aria-label="Admin token"><button id="connect">Authenticate</button><button class="secondary" id="refresh">Refresh players</button></div><p id="status" role="status">Enter your administrator token to load players.</p></section>
+<section class="panel"><h2>Players</h2><div class="row"><label for="player">Select account</label><select id="player"><option value="">Authenticate first</option></select><span id="presence" class="pill">No player selected</span></div><p id="count" class="subtle"></p></section>
+<section class="panel"><div class="row"><h2 id="heading">Bank</h2><button id="bankTab" class="active secondary">Bank (800 slots)</button><button id="inventoryTab" class="secondary">Inventory (28 slots)</button></div>
+<p id="revision" class="subtle">Select a registered account. Edits are logged, and online clients are refreshed by the game server.</p>
+<div class="controls"><label>Slot<input id="slot" type="number" min="0" max="799" step="1" placeholder="0"></label><label>Item ID<input id="itemId" type="number" min="0" max="65534" step="1" placeholder="995"></label><label>Quantity<input id="quantity" type="number" min="1" max="2147483647" step="1" placeholder="1"></label></div>
+<div class="row"><button id="save">Set slot</button><button id="remove" class="danger">Delete slot</button><button id="reloadContainer" class="secondary">Reload container</button></div>
+<table><thead><tr><th>Slot</th><th>Item ID</th><th>Quantity</th></tr></thead><tbody id="items"></tbody></table></section>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);let token='',selected=null,container='bank',updating=false;
+const message=text=>$('status').textContent=text;
+async function api(path,data){const options={headers:{Authorization:'Bearer '+token}};
+if(data){options.method='POST';options.headers['Content-Type']='application/x-www-form-urlencoded';options.body=new URLSearchParams(data).toString()}
+const response=await fetch('/admin/api'+path,options),body=await response.json();if(!response.ok)throw Error(body.error||`Request failed: ${response.status}`);return body}
+function endpoint(username){return '/game-players/'+encodeURIComponent(username)+'/containers'}
+function render(info){selected=info;$('heading').textContent=container==='bank'?'Bank':'Inventory';$('revision').textContent=`Saved container revision: ${info.revision.slice(0,12)} · ${info.username}`;
+$('presence').className='pill'+(info.online?' live':'');$('presence').textContent=info.online?`Online · World ${info.world}`:'Offline';
+$('slot').max=container==='bank'?'799':'27';$('bankTab').classList.toggle('active',container==='bank');$('inventoryTab').classList.toggle('active',container==='inventory');
+const table=$('items');table.replaceChildren();for(const item of info[container]){const tr=document.createElement('tr');tr.dataset.slot=item.slot;
+for(const entry of [item.slot,item.itemId,item.quantity]){const td=document.createElement('td');td.textContent=String(entry);tr.append(td)}
+tr.onclick=()=>{$('slot').value=item.slot;$('itemId').value=item.itemId;$('quantity').value=item.quantity};table.append(tr)}}
+async function loadSelected(){const name=$('player').value;if(!name){selected=null;$('items').replaceChildren();$('presence').textContent='No player selected';return}
+render(await api(endpoint(name)))}
+async function refreshPlayers(){if(!token||updating)return;updating=true;try{const entries=await api('/game-players'),prev=$('player').value;
+entries.sort((a,b)=>Number(b.online)-Number(a.online)||a.username.localeCompare(b.username));const menu=$('player');menu.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Select a player';menu.append(placeholder);
+let count=0;for(const entry of entries){const option=document.createElement('option');option.value=entry.username;option.textContent=`${entry.online?'● Online · W'+entry.world:'○ Offline'} · ${entry.displayName}`;menu.append(option);if(entry.online)count++}
+$('count').textContent=`${count} online · ${entries.length} registered accounts`;if(entries.some(e=>e.username===prev))menu.value=prev;
+else if(entries.some(e=>e.online))menu.value=entries.find(e=>e.online).username;
+else menu.value=entries.length?entries[0].username:'';
+if(menu.value && (!selected||selected.username!==menu.value))await loadSelected();
+else if(selected){const current=entries.find(e=>e.username===selected.username);if(current){selected.online=current.online;selected.world=current.world;$('presence').className='pill'+(current.online?' live':'');$('presence').textContent=current.online?`Online · World ${current.world}`:'Offline'}}
+message(`Player list updated: ${count} online`)}catch(err){message(err.message)}finally{updating=false}}
+$('connect').onclick=async()=>{token=$('token').value.trim();$('token').value='';selected=null;await refreshPlayers()};
+$('refresh').onclick=refreshPlayers;$('player').onchange=async()=>{try{await loadSelected()}catch(err){message(err.message)}};
+$('bankTab').onclick=()=>{container='bank';if(selected)render(selected)};
+$('inventoryTab').onclick=()=>{container='inventory';if(selected)render(selected)};
+$('reloadContainer').onclick=async()=>{try{await loadSelected();message('Container refreshed')}catch(err){message(err.message)}};
+async function update(action){if(!selected){message('Select a player first');return}
+const slot=Number($('slot').value);if(!Number.isInteger(slot)||slot<0||slot>=(container==='bank'?800:28)){message('Choose a valid slot');return}
+const payload={container,action,slot:String(slot),revision:selected.revision};
+if(action==='set'){const item=Number($('itemId').value),qty=Number($('quantity').value);if(!Number.isInteger(item)||item<0||item>=65535||!Number.isSafeInteger(qty)||qty<1||qty>2147483647){message('Invalid item ID or quantity');return}payload.itemId=String(item);payload.quantity=String(qty)}
+try{render(await api(endpoint(selected.username),payload));message(`${container} slot ${slot} ${action==='set'?'updated':'deleted'}`)}catch(err){message(err.message);if(err.message.includes('Refresh'))await loadSelected()}}
+$('save').onclick=()=>update('set');$('remove').onclick=()=>update('delete');
+setInterval(()=>{if(token&&!document.hidden)refreshPlayers()},5000);
+})();
+</script></body></html>
