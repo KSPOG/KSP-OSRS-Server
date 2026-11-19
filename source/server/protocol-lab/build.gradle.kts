@@ -69,6 +69,18 @@ tasks.register<JavaExec>("testCacheReader") {
     mainClass.set("dev.ksp.osrs.protocol.IndexedCacheReaderTest")
 }
 
+val testInventoryItemEvents by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Verify the revision-242 inventory widget action and target flags."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.InventoryItemEventsTest")
+}
+
+tasks.named("check") {
+    dependsOn(testInventoryItemEvents)
+}
+
 tasks.register<JavaExec>("testReferenceTables") {
     group = "verification"
     description = "Validate reference table container parsing and safe failure."
