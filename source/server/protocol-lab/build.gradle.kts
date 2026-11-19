@@ -77,8 +77,16 @@ val testInventoryItemEvents by tasks.registering(JavaExec::class) {
     mainClass.set("dev.ksp.osrs.protocol.InventoryItemEventsTest")
 }
 
+val testInventoryEquipment by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Verify cache-driven equipment actions and transactional inventory swaps."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.ksp.osrs.protocol.InventoryEquipmentTest")
+}
+
 tasks.named("check") {
-    dependsOn(testInventoryItemEvents)
+    dependsOn(testInventoryItemEvents, testInventoryEquipment)
 }
 
 tasks.register<JavaExec>("testReferenceTables") {

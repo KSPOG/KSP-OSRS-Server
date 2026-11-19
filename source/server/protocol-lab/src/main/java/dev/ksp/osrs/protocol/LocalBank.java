@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Properties;
+import java.util.function.IntFunction;
+import net.runelite.cache.definitions.ItemDefinition;
 import net.rsprot.protocol.common.game.outgoing.inv.InventoryObject;
 import net.rsprot.protocol.game.outgoing.inv.UpdateInvFull;
 
@@ -17,7 +19,7 @@ final class LocalBank {
     static final int ALL_BUT_ONE = -1;
     private static final int COINS = 995;
     private static final int EQUIPMENT_SIZE = 14;
-    private static final int WEAPON_SLOT = 3;
+    static final int WEAPON_SLOT = 3;
     private final Path file;
     private final Path lockFile;
     private final boolean starterCoins;
@@ -29,9 +31,12 @@ final class LocalBank {
     }
 
     LocalBank(String username, boolean starterCoins) throws IOException {
+        this(Path.of(System.getenv().getOrDefault("KSP_PLAYER_DATA_DIR", "data"), "gameplay"), username, starterCoins);
+    }
+
+    LocalBank(Path directory, String username, boolean starterCoins) throws IOException {
         this.starterCoins = starterCoins;
         if (!username.matches("[A-Za-z0-9_]{1,12}")) throw new IOException("Invalid gameplay profile name");
-        Path directory = Path.of(System.getenv().getOrDefault("KSP_PLAYER_DATA_DIR", "data"), "gameplay");
         Files.createDirectories(directory);
         file = directory.resolve(username + ".properties");
         lockFile = directory.resolve(username + ".lock");
@@ -86,22 +91,27 @@ final class LocalBank {
         return item == null ? -1 : item.id;
     }
 
-    boolean equipTutorialWeapon(int slot, int expectedId) throws IOException {
-        return equipTutorialItem(slot, expectedId, WEAPON_SLOT);
+    static boolean equipmentSlot(int slot) {
+        return switch (slot) {
+            case 0, 1, 2, WEAPON_SLOT, 4, SHIELD_SLOT, 7, 9, 10, 12, AMMO_SLOT -> true;
+            default -> false;
+        };
     }
 
-    boolean equipTutorialItem(int slot, int expectedId, int wornSlot) throws IOException {
-        if (slot < 0 || slot >= INVENTORY_SIZE) return false;
-        if (wornSlot != WEAPON_SLOT && wornSlot != SHIELD_SLOT && wornSlot != AMMO_SLOT) return false;
+    boolean equip(int slot, ItemDefinition definition, IntFunction<ItemDefinition> definitions) throws IOException {
+        int wornSlot = definition.wearPos1;
+        if (slot < 0 || slot >= INVENTORY_SIZE || !equipmentSlot(wornSlot)) return false;
+
         try (var channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
              var lock = channel.lock()) {
             State state = load();
             Item item = state.inventory[slot];
-            if (item == null || item.id != expectedId || !item.equals(displayed.inventory[slot])
-                    || wornSlot != AMMO_SLOT && item.count != 1) return false;
+            boolean stackable = definition.stackable == 1;
+            if (item == null || item.id != definition.id || !item.equals(displayed.inventory[slot])
+                    || !stackable && item.count != 1) return false;
 
             Item previous = state.equipment[wornSlot];
-            if (wornSlot == AMMO_SLOT && previous != null && previous.id == item.id) {
+            if (stackable && previous != null && previous.id == item.id) {
                 if (Integer.MAX_VALUE - previous.count < item.count) return false;
                 state.inventory[slot] = null;
                 state.equipment[wornSlot] = new Item(item.id, previous.count + item.count);
@@ -110,23 +120,16 @@ final class LocalBank {
                 state.equipment[wornSlot] = item;
             }
 
-            int conflictSlot = -1;
-            if (wornSlot == WEAPON_SLOT && item.id == TUTORIAL_SHORTBOW) {
-                conflictSlot = SHIELD_SLOT;
-            } else if (wornSlot == SHIELD_SLOT && state.equipment[WEAPON_SLOT] != null
-                    && state.equipment[WEAPON_SLOT].id == TUTORIAL_SHORTBOW) {
-                conflictSlot = WEAPON_SLOT;
-            }
-            if (conflictSlot != -1 && state.equipment[conflictSlot] != null) {
-                int empty = -1;
-                for (int index = 0; index < INVENTORY_SIZE; index++) {
-                    if (state.inventory[index] == null) {
-                        empty = index;
-                        break;
-                    }
-                }
-                if (empty == -1) return false;
-                state.inventory[empty] = state.equipment[conflictSlot];
+            int conflictSlot = conflictingEquipmentSlot(state, definition, definitions);
+            if (conflictSlot != -1) {
+                Item conflict = state.equipment[conflictSlot];
+                var conflictDefinition = definitions.apply(conflict.id);
+                int destination = conflictDefinition != null && conflictDefinition.stackable == 1
+                    ? stackSlot(state.inventory, conflict.id) : firstEmptySlot(state.inventory);
+                if (destination == -1) return false;
+                Item stack = state.inventory[destination];
+                if (stack != null && Integer.MAX_VALUE - stack.count < conflict.count) return false;
+                state.inventory[destination] = stack == null ? conflict : new Item(conflict.id, stack.count + conflict.count);
                 state.equipment[conflictSlot] = null;
             }
 
@@ -135,6 +138,28 @@ final class LocalBank {
             lastKnownModification = modificationStamp();
             return true;
         }
+    }
+
+    private static int conflictingEquipmentSlot(State state, ItemDefinition item, IntFunction<ItemDefinition> definitions) {
+        if (item.wearPos1 == WEAPON_SLOT && occupiesShieldSlot(item) && state.equipment[SHIELD_SLOT] != null) {
+            return SHIELD_SLOT;
+        }
+        Item weapon = state.equipment[WEAPON_SLOT];
+        if (item.wearPos1 == SHIELD_SLOT && weapon != null && occupiesShieldSlot(definitions.apply(weapon.id))) {
+            return WEAPON_SLOT;
+        }
+        return -1;
+    }
+
+    private static boolean occupiesShieldSlot(ItemDefinition item) {
+        return item != null && (item.wearPos2 == SHIELD_SLOT || item.wearPos3 == SHIELD_SLOT);
+    }
+
+    private static int firstEmptySlot(Item[] items) {
+        for (int i = 0; i < items.length; i++) {
+            if (items[i] == null) return i;
+        }
+        return -1;
     }
 
     static final int TUTORIAL_BRONZE_ARROW = 882;

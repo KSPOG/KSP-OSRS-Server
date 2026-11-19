@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import net.runelite.cache.definitions.ItemDefinition;
 import net.rsprot.compression.HuffmanCodec;
 import net.rsprot.compression.provider.DefaultHuffmanCodecProvider;
 import net.rsprot.compression.provider.HuffmanCodecProvider;
@@ -499,8 +500,8 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
                 }
                 session.queue(new UpdateStatV2(skill,level,level,xp));
             }
+            syncEquipment(player);
             if (onboarding != null) {
-                syncTutorialEquipment(player);
                 if (onboarding.stage() == NewPlayerProfile.COMBAT_WIELD_DAGGER && bank.equippedWeapon() == BRONZE_DAGGER) {
                     if (!saveStage(player, NewPlayerProfile.COMBAT_GUIDE_RETURN)) sendTutorialProgress(player);
                 } else if (onboarding.stage() == NewPlayerProfile.COMBAT_EQUIP_MELEE && tutorialMeleeGearReady(player)) {
@@ -541,6 +542,7 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
                 try {
                     if (player.bank().refreshIfModified()) {
                         player.session().queue(player.bank().packet(false));
+                        syncEquipment(player);
                         if (player.widgets().bankGroup != 0) player.session().queue(player.bank().packet(true));
                     }
                 } catch (IOException failure) {
@@ -754,7 +756,6 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
     private static final int EQUIPMENT_STATS = 84;
     private static final int EQUIPMENT_STATS_INVENTORY = 85;
     private static final int WIELD_OPTION = 2;
-    private static final int WEAPON_APPEARANCE_SLOT = 3;
 
     private void openTutorialEquipmentStats(Player player) {
         int stage = player.onboarding().stage();
@@ -777,6 +778,7 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
         session.queue(new IfSetEventsV2(EQUIPMENT_STATS_INVENTORY, INVENTORY_ITEMS, 0, LocalBank.INVENTORY_SIZE - 1, 0, 1 << (WIELD_OPTION - 1)));
         session.queue(player.bank().packet(false));
         session.queue(player.bank().equipmentPacket());
+        advanceTutorialEquipment(player);
     }
 
     private void closeTutorialEquipmentStats(Player player) {
@@ -798,13 +800,18 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
     private static final int BRONZE_SHORTSWORD = 1277;
     private static final int WOODEN_SHIELD = 1171;
 
-    private void syncTutorialEquipment(Player player) {
+    private void syncEquipment(Player player) {
         var gear = player.bank();
         var appearance = player.infos().getPlayerInfo().getAvatar().getExtendedInfo();
-        int weapon = gear.equippedWeapon();
-        appearance.setWornObj(LocalBank.SHIELD_SLOT, gear.equippedItem(LocalBank.SHIELD_SLOT), -1, -1);
-        appearance.setWornObj(WEAPON_APPEARANCE_SLOT, weapon,
-            weapon == LocalBank.TUTORIAL_SHORTBOW ? LocalBank.SHIELD_SLOT : -1, -1);
+        // Ring and ammunition slots are transmitted in the container but do not have appearance slots.
+        for (int slot = 0; slot < 12; slot++) {
+            if (!LocalBank.equipmentSlot(slot)) continue;
+            int id = gear.equippedItem(slot);
+            var definition = world.itemDefinition(id);
+            appearance.setWornObj(slot, definition == null ? -1 : id,
+                definition == null ? -1 : definition.wearPos2,
+                definition == null ? -1 : definition.wearPos3);
+        }
         player.session().queue(gear.equipmentPacket());
     }
 
@@ -818,36 +825,53 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
             && player.bank().equippedItem(LocalBank.AMMO_SLOT) == LocalBank.TUTORIAL_BRONZE_ARROW;
     }
 
-    private boolean wieldTutorialEquipment(Player player, int slot, int item) {
-        int stage = player.onboarding().stage();
-        boolean daggerLesson = stage == NewPlayerProfile.COMBAT_WIELD_DAGGER && item == BRONZE_DAGGER;
-        boolean meleeLesson = stage == NewPlayerProfile.COMBAT_EQUIP_MELEE
-            && (item == BRONZE_SHORTSWORD || item == WOODEN_SHIELD);
-        boolean rangedLesson = (stage == NewPlayerProfile.COMBAT_EQUIP_RANGED || stage == NewPlayerProfile.COMBAT_RANGED_RAT)
-            && (item == LocalBank.TUTORIAL_SHORTBOW || item == LocalBank.TUTORIAL_BRONZE_ARROW);
-        if (!daggerLesson && !meleeLesson && !rangedLesson) return false;
+    static boolean isEquipmentOperation(ItemDefinition item, int option) {
+        if (item == null || !LocalBank.equipmentSlot(item.wearPos1)
+                || item.notedTemplate != -1 || item.placeholderTemplateId != -1
+                || option < 1 || option > item.interfaceOptions.length) return false;
+        String action = item.interfaceOptions[option - 1];
+        return "Wield".equalsIgnoreCase(action) || "Wear".equalsIgnoreCase(action)
+            || "Equip".equalsIgnoreCase(action);
+    }
+
+    private void equipFromInventory(Player player, int slot, int item, int option) {
+        int stage = player.onboarding() == null ? -1 : player.onboarding().stage();
+        if (!TutorialTabPolicy.allowed(TutorialTabPolicy.allowedMask(stage), INVENTORY_TAB)) return;
+        var gear = player.bank();
+        if (!gear.hasTutorialItem(slot, item)) return;
+        var definition = world.itemDefinition(item);
+        if (!isEquipmentOperation(definition, option)) return;
+        if (definition.members && !membersWorld) {
+            sendMessage(player, "You can only equip this item on a members world.");
+            return;
+        }
         try {
-            var gear = player.bank();
-            boolean equipped = switch (item) {
-                case WOODEN_SHIELD -> gear.equipTutorialItem(slot, item, LocalBank.SHIELD_SLOT);
-                case LocalBank.TUTORIAL_BRONZE_ARROW -> gear.equipTutorialItem(slot, item, LocalBank.AMMO_SLOT);
-                default -> gear.equipTutorialWeapon(slot, item);
-            };
-            if (equipped) {
-                player.session().queue(gear.packet(false));
-                syncTutorialEquipment(player);
-                if (daggerLesson) saveStage(player, NewPlayerProfile.COMBAT_GUIDE_RETURN);
-                else if (meleeLesson && tutorialMeleeGearReady(player)) saveStage(player, NewPlayerProfile.COMBAT_VIEW_OPTIONS);
-                else if (stage == NewPlayerProfile.COMBAT_EQUIP_RANGED && tutorialRangedGearReady(player)) {
-                    saveStage(player, NewPlayerProfile.COMBAT_RANGED_RAT);
-                }
-            } else if (rangedLesson) {
-                sendMessage(player, "Check that you have room in your inventory for your current equipment.");
+            if (!gear.equip(slot, definition, world::itemDefinition)) {
+                sendMessage(player, "You could not equip this item. Check that you have inventory space.");
+                return;
             }
+            player.session().queue(gear.packet(false));
+            syncEquipment(player);
+            advanceTutorialEquipment(player);
         } catch (IOException failure) {
             sendMessage(player, "Your equipment could not be saved. Try again.");
         }
-        return true;
+    }
+
+    private void advanceTutorialEquipment(Player player) {
+        if (player.onboarding() == null) return;
+        switch (player.onboarding().stage()) {
+            case NewPlayerProfile.COMBAT_WIELD_DAGGER -> {
+                if (player.bank().equippedWeapon() == BRONZE_DAGGER) saveStage(player, NewPlayerProfile.COMBAT_GUIDE_RETURN);
+            }
+            case NewPlayerProfile.COMBAT_EQUIP_MELEE -> {
+                if (tutorialMeleeGearReady(player)) saveStage(player, NewPlayerProfile.COMBAT_VIEW_OPTIONS);
+            }
+            case NewPlayerProfile.COMBAT_EQUIP_RANGED -> {
+                if (tutorialRangedGearReady(player)) saveStage(player, NewPlayerProfile.COMBAT_RANGED_RAT);
+            }
+            default -> { }
+        }
     }
 
     private void widgetClick(Player player, int group, int component, int child, int option, int item) {
@@ -856,11 +880,12 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
             openTutorialEquipmentStats(player);
             return;
         }
-        boolean tutorialInventory = group == INVENTORY && !player.widgets().equipmentStats
+        boolean inventory = group == INVENTORY && !player.widgets().equipmentStats
             || group == EQUIPMENT_STATS_INVENTORY && player.widgets().equipmentStats;
-        if (player.onboarding() != null && player.widgets().bankGroup == 0 && tutorialInventory
-                && component == INVENTORY_ITEMS && option == WIELD_OPTION
-                && wieldTutorialEquipment(player, child, item)) return;
+        if (player.widgets().bankGroup == 0 && inventory && component == INVENTORY_ITEMS) {
+            equipFromInventory(player, child, item, option);
+            return;
+        }
         if (group == SMITHING) {
             if (player.widgets().smithing && component == SMITHING_DAGGER && option == 1 && child == -1
                 && player.onboarding().stage() == NewPlayerProfile.SMITH_DAGGER) {

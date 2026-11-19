@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.runelite.cache.definitions.ItemDefinition;
 import net.runelite.cache.definitions.MapDefinition.Tile;
 import net.runelite.cache.definitions.ObjectDefinition;
 import net.runelite.cache.definitions.loaders.ItemLoader;
@@ -40,7 +41,7 @@ final class LocalWorld {
     private final ArchiveFiles items;
     private final List<List<Integer>> bodyKits = new ArrayList<>(14);
     private final ItemLoader itemLoader = new ItemLoader();
-    private final Map<Integer, Boolean> stackable = new HashMap<>();
+    private final Map<Integer, ItemDefinition> itemDefinitions = new HashMap<>();
     private final ObjectLoader objectLoader;
 
     private LocalWorld(Path cache) throws IOException {
@@ -85,11 +86,17 @@ final class LocalWorld {
         return bodyKits.get(slot + (male ? 0 : 7));
     }
 
-    boolean stackable(int id) {
-        return stackable.computeIfAbsent(id, key -> {
+    ItemDefinition itemDefinition(int id) {
+        if (id < 0) return null;
+        return itemDefinitions.computeIfAbsent(id, key -> {
             var file = items.findFile(key);
-            return file != null && itemLoader.load(key, file.getContents()).stackable == 1;
+            return file == null ? null : itemLoader.load(key, file.getContents());
         });
+    }
+
+    boolean stackable(int id) {
+        var item = itemDefinition(id);
+        return item != null && item.stackable == 1;
     }
 
     Scene build(int centerX, int centerZ, boolean members) throws IOException {
