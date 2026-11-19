@@ -136,6 +136,13 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
     private static final int BANK_ITEMS = 12;
     private static final int BANK_INVENTORY = 3;
     private static final int INVENTORY_TAB = 3;
+    private static final int INVENTORY = 149;
+    private static final int INVENTORY_ITEMS = 0;
+    private static final int USE_ON_NPC = 1 << 12;
+    private static final int USE_ON_LOCATION = 1 << 13;
+    private static final int USE_ON_WIDGET = 1 << 16;
+    private static final int ACCEPT_WIDGET_TARGET = 1 << 21;
+    private static final int INVENTORY_OPERATIONS = (1 << 10) - 1;
     private static final int DIALOGUE_CONTAINER = 568;
     private static final int NPC_DIALOGUE = 231;
     private static final int DIALOGUE_CONTINUE = 5;
@@ -149,7 +156,7 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
         593, // Combat
         320, // Skills
         399, // Quest list
-        149, // Inventory
+        INVENTORY,
         387, // Equipment
         541, // Prayer
         218, // Magic spellbook
@@ -736,6 +743,8 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
             syncTutorialTabs(player);
             syncTutorialChatbox(player);
             if (selectingExperience(player)) openExperienceSelection(player);
+        } else if (player.widgets().bankGroup != BANK) {
+            session.queue(inventoryItemEvents());
         }
         System.out.printf("KSP_LOCAL_GAME_LAYOUT root=%d%n", hud.root());
     }
@@ -744,8 +753,6 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
     private static final int VIEW_EQUIPMENT_STATS = 1;
     private static final int EQUIPMENT_STATS = 84;
     private static final int EQUIPMENT_STATS_INVENTORY = 85;
-    private static final int INVENTORY = 149;
-    private static final int INVENTORY_ITEMS = 0;
     private static final int WIELD_OPTION = 2;
     private static final int WEAPON_APPEARANCE_SLOT = 3;
 
@@ -777,7 +784,15 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
         player.widgets().equipmentStats = false;
         var hud = player.hud();
         player.session().queue(new IfCloseSub(hud.root(), hud.mainModal()));
-        player.session().queue(new IfOpenSub(hud.root(), hud.firstTab() + INVENTORY_TAB, INVENTORY, OVERLAY_INTERFACE));
+        hud.openInventory(player.session());
+    }
+
+    static IfSetEventsV2 inventoryItemEvents() {
+        // The native inventory script supplies the item-specific labels. Revision 242
+        // carries operation permissions separately from the Use target flags.
+        int targets = USE_ON_NPC | USE_ON_LOCATION | USE_ON_WIDGET | ACCEPT_WIDGET_TARGET;
+        return new IfSetEventsV2(INVENTORY, INVENTORY_ITEMS, 0, LocalBank.INVENTORY_SIZE - 1,
+            targets, INVENTORY_OPERATIONS);
     }
 
     private static final int BRONZE_SHORTSWORD = 1277;
@@ -1406,7 +1421,9 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
                     hud.root(), tab, iconComponent, allow);
             }
             if (allow) {
-                if (widgets.bankGroup == 0 || tab != INVENTORY_TAB) {
+                if (tab == INVENTORY_TAB) {
+                    if (widgets.bankGroup != BANK && !widgets.equipmentStats) hud.openInventory(player.session());
+                } else {
                     player.session().queue(new IfOpenSub(hud.root(),hud.firstTab() + tab,
                         SIDE_TAB_INTERFACES[tab],OVERLAY_INTERFACE));
                 }
@@ -1943,8 +1960,12 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
         var hud = player.hud();
         player.session().queue(new IfCloseSub(hud.root(), hud.mainModal()));
         if (group == BANK) {
-            player.session().queue(new IfOpenSub(hud.root(), hud.firstTab() + INVENTORY_TAB,
-                SIDE_TAB_INTERFACES[INVENTORY_TAB], OVERLAY_INTERFACE));
+            if (TutorialTabPolicy.allowed(TutorialTabPolicy.allowedMask(
+                    player.onboarding() == null ? -1 : player.onboarding().stage()), INVENTORY_TAB)) {
+                hud.openInventory(player.session());
+            } else {
+                player.session().queue(new IfCloseSub(hud.root(), hud.firstTab() + INVENTORY_TAB));
+            }
         }
     }
 
@@ -2389,6 +2410,11 @@ public final class LocalGameListener implements GameConnectionHandler<LocalGameL
 
     private record HudLayout(int root, int chat, int orbs, int firstTab, int mainModal, int floater,
                              int settingsStone, int settingsIcon) {
+        void openInventory(Session<Player> session) {
+            session.queue(new IfOpenSub(root, firstTab + INVENTORY_TAB, INVENTORY, OVERLAY_INTERFACE));
+            session.queue(inventoryItemEvents());
+        }
+
         void queueLogoutTab(Session<Player> session, int group) {
             session.queue(new IfOpenSub(root, firstTab + LOGOUT_TAB, group, OVERLAY_INTERFACE));
         }
